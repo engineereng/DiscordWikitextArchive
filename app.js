@@ -3,9 +3,13 @@ import express from 'express';
 import {
   InteractionType,
   InteractionResponseType,
+  InteractionResponseFlags,
+  MessageComponentTypes,
+  ButtonStyleTypes,
   verifyKeyMiddleware,
 } from 'discord-interactions';
-import { getRandomEmoji } from './utils.js';
+import { getRandomEmoji, DiscordRequest } from './utils.js';
+import { getShuffledOptions, getResult } from './game.js';
 
 // Create an express app
 const app = express();
@@ -18,7 +22,7 @@ const PORT = process.env.PORT || 3000;
  */
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
   // Interaction type and data
-  const { type, data } = req.body;
+  const { type, data, channel, id } = req.body;
 
   /**
    * Handle verification requests
@@ -44,6 +48,32 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           content: `hello world ${getRandomEmoji()}`,
         },
       });
+    }
+
+    if (name === 'archive') {
+      const {type} = channel;
+
+      // TODO check if the current thread is a
+      if (type === 11) // 11 is PUBLIC_THREAD
+      {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.EPHEMERAL,
+            content: "You're archiving a thread or forum",
+          }
+        })
+      } else {
+          // Refuse to archive the current channel
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              //
+              flags: InteractionResponseFlags.EPHEMERAL,
+              content: "You may only archive threads and forums",
+            }
+          })
+      }
     }
 
     console.error(`unknown command: ${name}`);
