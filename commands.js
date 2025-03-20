@@ -35,6 +35,14 @@ const ARCHIVE_COMMAND = {
   contexts: [0]
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND];
+const CONFIG_ALLOWED_CHANNELS_COMMAND = {
+  name: "config_allowed_channels",
+  description: "Change which channels can be archived",
+  type: 1,
+  integration_types: [0],
+  contexts: [0]
+}
+
+const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND, CONFIG_ALLOWED_CHANNELS_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
