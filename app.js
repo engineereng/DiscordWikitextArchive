@@ -64,9 +64,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   /**
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
+   * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
    * @returns A string of the message formatted as wikitext
    */
-  const formatMessageToWikitext = (message) => {
+  const formatMessageToWikitext = (message, simpleDate = false) => {
     // Wanted format:
     // *21:56: [[User:Ironwestie|Ironwestie]]: Hello all.
     // *21:56: [[User:Brunocoolgamers|Brunocoolgamers]]: hii
@@ -77,7 +78,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     console.log(timestamp);
     // timestamp is in format: Fri, 21 Mar 2025 21:56:00 GMT
     // we want to format it to: 21:56
-    const timestampFormatted = timestamp.slice(16, 22);
+    const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
 
     // TODO map the author to a wikitext link based on the username
     parts.push(`*${timestampFormatted}: ${message.author.username}:`);
@@ -105,7 +106,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     return parts.join(' ');
-    // return `*${timestamp}: [[User:${message.author.username}|${message.author.username}]]: ${message.content}`;
   }
 
   /**
@@ -139,6 +139,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       if (type === 11) // 11 is PUBLIC_THREAD
       {
+        // TODO check if the thread is a moot thread or a forum thread
         const messages = await readDiscordThread(id);
         // Reverse the messages array
         const messagesReversed = messages.reverse();
