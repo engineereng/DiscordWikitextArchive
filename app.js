@@ -22,7 +22,39 @@ const PORT = process.env.PORT || 3000;
  */
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
   // Interaction type and data
-  const { type, data, channel, id } = req.body;
+  const { type, data, channel } = req.body;
+
+  const readDiscordThread = async (threadId) => {
+    const response = await DiscordRequest(`channels/${threadId}/messages?limit=100`, {
+      method: 'GET'
+    });
+    const messages = await response.json();
+
+    // Log more details about each message
+    messages.forEach(message => {
+      console.log('Message:', {
+        type: message.type,
+        content: message.content,
+        hasEmbeds: message.embeds?.length > 0,
+        hasAttachments: message.attachments?.length > 0,
+        timestamp: message.timestamp,
+        author: message.author.username,
+        message_reference: message.message_reference,
+        components: message.components,
+        flags: message.flags,
+        raw: message,
+        mentions: message.mentions,
+        mention_roles: message.mention_roles,
+        pinned: message.pinned,
+        mention_everyone: message.mention_everyone,
+        tts: message.tts,
+        position: message.position,
+        referenced_message: message.referenced_message
+      });
+    });
+
+    return messages;
+  }
 
   /**
    * Handle verification requests
@@ -51,16 +83,49 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     if (name === 'archive') {
-      const {type} = channel;
+      const {type, id} = channel;
 
-      // TODO check if the current thread is a
       if (type === 11) // 11 is PUBLIC_THREAD
       {
+        const messages = await readDiscordThread(id);
+        // Reverse the messages array
+        const messagesReversed = messages.reverse();
+        const fileContent = "```\n" + messagesReversed.map(message => {
+          const parts = [];
+
+          // Add timestamp and author
+          const timestamp = new Date(message.timestamp).toUTCString();
+          parts.push(`[${timestamp}] ${message.author.username}:`);
+
+          // Add text content if it exists
+          if (message.content) {
+            parts.push(message.content);
+          }
+
+          // Add embed content if it exists
+          if (message.embeds?.length > 0) {
+            message.embeds.forEach(embed => {
+              if (embed.title) parts.push(`[Embed Title] ${embed.title}`);
+              if (embed.description) parts.push(`[Embed Description] ${embed.description}`);
+              if (embed.url) parts.push(`[Embed URL] ${embed.url}`);
+            });
+          }
+
+          // Add attachment URLs if they exist
+          if (message.attachments?.length > 0) {
+            message.attachments.forEach(attachment => {
+              parts.push(`[Attachment] ${attachment.url}`);
+            });
+          }
+
+          return parts.join('\n');
+        }).join('\n\n') + "\n```";
+
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
             flags: InteractionResponseFlags.EPHEMERAL,
-            content: "You're archiving a thread or forum",
+            content: fileContent || "No content found in thread.",
           }
         })
       } else {
