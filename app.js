@@ -108,6 +108,15 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     return parts.join(' ');
   }
 
+  const getAllowedRoles = async () => {
+    const storedRoles = await fs.readFile('allowed_roles.json', 'utf8');
+    return JSON.parse(storedRoles);
+  }
+
+  const setAllowedRoles = async (roles) => {
+    await fs.writeFile('allowed_roles.json', JSON.stringify(roles));
+  }
+
   /**
    * Handle verification requests
    */
@@ -136,6 +145,20 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
     if (name === 'archive') {
       const {type, id} = channel;
+
+      const allowedRoles = await getAllowedRoles();
+      // Get user roles from the member object in the interaction
+      const userRoles = req.body.member?.roles || [];
+      const hasPermission = allowedRoles.some(roleId => userRoles.includes(roleId));
+      if (!hasPermission) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.EPHEMERAL,
+            content: "You do not have permission to archive channels. You need to have a role that is in the allowed roles list.",
+          }
+        })
+      }
 
       if (type === 11) // 11 is PUBLIC_THREAD
       {
@@ -193,8 +216,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       // Get current allowed roles from storage
       let allowedRoles = [];
       try {
-        const storedRoles = await fs.readFile('allowed_roles.json', 'utf8');
-        allowedRoles = JSON.parse(storedRoles);
+        const storedRoles = await getAllowedRoles();
+        allowedRoles = storedRoles;
       } catch (err) {
         // File doesn't exist yet or other error, start with empty array
         allowedRoles = [];
@@ -230,7 +253,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         }
 
         // Save updated roles back to file
-        await fs.writeFile('allowed_roles.json', JSON.stringify(allowedRoles));
+        await setAllowedRoles(allowedRoles);
       }
 
       return res.send({
