@@ -77,21 +77,63 @@ md.renderer.rules.list_item_close = (tokens, idx) => {
   }
 };
 
-// Update link rendering to put URL first
-md.renderer.rules.link_open = (tokens, idx) => {
-  const href = tokens[idx].attrs.find(attr => attr[0] === 'href')[1];
-  return `[${href} `;
-};
-md.renderer.rules.link_close = () => "]";
+// Process different types of links
+export const processLinks = (content) => {
+  // First handle markdown-style links [text](url)
+  content = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+    // Template links
+    if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Template:/)) {
+      const templateName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Template:/, '').replace(/_/g, ' ');
+      return `{{t|${templateName}}}`;
+    }
 
-// Add custom token rule for link_text to skip it (we'll get it from content)
+    // Category links (need a : prefix to prevent categorization)
+    if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Category:/)) {
+      const categoryName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Category:/, '').replace(/_/g, ' ');
+      return `[[:Category:${categoryName}]]`;
+    }
+
+    // Interwiki links
+    if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\//)) {
+      const pageName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\//, '').replace(/_/g, ' ');
+      return `[[${pageName}]]`;
+    }
+
+    // External links
+    if (!url.startsWith('https://siivagunner.fandom.com/')) {
+      return `[${url}]`;
+    }
+
+    return match;
+  });
+
+  // Then handle raw URLs
+  content = content.replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/Template:([^\s\]]+)/g, (match, templateName) => {
+    return `{{t|${templateName.replace(/_/g, ' ')}}}`;
+  });
+
+  content = content.replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/Category:([^\s\]]+)/g, (match, categoryName) => {
+    return `[[:Category:${categoryName.replace(/_/g, ' ')}]]`;
+  });
+
+  content = content.replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/([^\s\]]+)/g, (match, pageName) => {
+    return `[[${pageName.replace(/_/g, ' ')}]]`;
+  });
+
+  return content;
+};
+
+// Disable markdown-it's link processing
+md.disable(['link']);
+
+// Add custom token rule for text to handle raw URLs
 md.renderer.rules.text = (tokens, idx) => {
-  // If this text token is inside a link, it's the display text
-  if (tokens[idx].level === 1 && tokens[idx-1]?.type === 'link_open') {
-    return tokens[idx].content;
-  }
-  // Otherwise render normally
-  return tokens[idx].content;
+  let content = tokens[idx].content;
+
+  // Process raw URLs in text
+  content = processLinks(content);
+
+  return content;
 };
 
 // Disable markdown-it's list processing

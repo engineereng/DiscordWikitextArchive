@@ -9,6 +9,7 @@ import {
   processTemplates,
   processSubtext,
   processUnderlineMarkdown,
+  processLinks,
   renderContent,
 } from './markdown.js';
 
@@ -66,6 +67,10 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
       // Process templates before other Discord-specific formatting
       content = processTemplates(content);
       console.log("Content after template processing:", content);
+
+      // Process links before markdown rendering
+      content = processLinks(content);
+      console.log("Content after link processing:", content);
 
       // Then process other Discord-specific formatting
       content = content
