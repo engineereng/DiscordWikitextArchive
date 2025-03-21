@@ -37,11 +37,47 @@ const ARCHIVE_COMMAND = {
 
 const CONFIG_ALLOWED_CHANNELS_COMMAND = {
   name: "config_allowed_channels",
-  description: "Change which channels can be archived",
+  description: "Change which channels can have their threads archived",
   type: 1,
   integration_types: [0],
   contexts: [0],
-  default_member_permissions: "8" // Requires Administrator permission (8)
+  default_member_permissions: "8", // Requires Administrator permission (8)
+  dm_permission: false, // Cannot be used in DMs
+  options: [
+    {
+      name: "list",
+      description: "List all channels that can have their threads archived",
+      type: 1 // 1 is SUB_COMMAND
+    },
+    {
+      name: "add",
+      description: "Add a channel to the allowed list",
+      type: 1, // 1 is SUB_COMMAND
+      options: [
+        {
+          name: "channel",
+          description: "The channel to add to the allowed list",
+          type: 7, // 7 is CHANNEL type
+          required: true,
+          channel_types: [0, 15] // Only text channels (0) and forum channels (15)
+        }
+      ]
+    },
+    {
+      name: "remove",
+      description: "Remove a channel from the allowed list",
+      type: 1, // 1 is SUB_COMMAND
+      options: [
+        {
+          name: "channel",
+          description: "The channel to remove from the allowed list",
+          type: 7, // 7 is CHANNEL type
+          required: true,
+          channel_types: [0, 15] // Only text channels (0) and forum channels (15)
+        }
+      ]
+    }
+  ]
 }
 
 const CONFIG_ALLOWED_ROLES_COMMAND = {

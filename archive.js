@@ -1,5 +1,5 @@
 import { DiscordRequest } from './utils.js';
-
+import { promises as fs } from 'fs';
 /**
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
@@ -81,4 +81,13 @@ export async function readDiscordThread (threadId) {
     // });
 
     return messages;
-    }
+}
+
+export async function getAllowedChannels() {
+    const storedChannels = await fs.readFile('allowed_channels.json', 'utf8');
+    return JSON.parse(storedChannels);
+  }
+
+export async function setAllowedChannels(channels) {
+    await fs.writeFile('allowed_channels.json', JSON.stringify(channels));
+}

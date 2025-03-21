@@ -10,7 +10,7 @@ import {
 } from 'discord-interactions';
 import { getRandomEmoji, DiscordRequest } from './utils.js';
 import { promises as fs } from 'fs';
-import { formatMessageToWikitext, readDiscordThread } from './archive.js';
+import { formatMessageToWikitext, readDiscordThread, getAllowedChannels, setAllowedChannels } from './archive.js';
 
 // Create an express app
 const app = express();
@@ -61,7 +61,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     if (name === 'archive') {
-      const {type, id} = channel;
+      const {type, id, parent_id} = channel;
 
       const allowedRoles = await getAllowedRoles();
       // Get user roles from the member object in the interaction
@@ -77,9 +77,20 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         })
       }
 
-      if (type === 11) // 11 is PUBLIC_THREAD
+      if (type === 11) // 11 is PUBLIC_THREAD. It includes both threads and forum posts.
       {
-        // TODO check if the thread is a moot thread or a forum thread
+        // Check if the thread's parent channel is in the allowed channels list
+        const allowedChannels = await getAllowedChannels();
+        const isAllowed = allowedChannels.includes(parent_id);
+        if (!isAllowed) {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL,
+              content: "This thread's parent channel is not in the allowed channels list.",
+            }
+          })
+        }
         const messages = await readDiscordThread(id);
         // Reverse the messages array
         const messagesReversed = messages.reverse();
@@ -108,13 +119,65 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     if (name === 'config_allowed_channels') {
-      // TODO update the allowed channels
+      // Check if we have options
+      if (!options || !options[0]) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: "No subcommand specified",
+          }
+        });
+      }
+
+      const subcommand = options[0].name; // 'add', 'remove', or 'list'
+
+      // Get current allowed channels from storage
+      let allowedChannels = [];
+      try {
+        const storedChannels = await getAllowedChannels();
+        allowedChannels = storedChannels;
+      } catch (err) {
+        // File doesn't exist yet or other error, start with empty array
+        allowedChannels = [];
+      }
+
+      let message;
+      if (subcommand === 'list') {
+        if (allowedChannels.length === 0) {
+          message = "No channels are currently allowed to be archived.";
+        } else {
+          const channelsList = allowedChannels.map(channelId => `<#${channelId}>`).join('\n');
+          message = "Channels that can be archived:\n" + channelsList;
+        }
+      } else if (subcommand === 'add') {
+        const channelId = options[0].options[0].value;
+
+        if (allowedChannels.includes(channelId)) {
+          message = `Channel <#${channelId}> is already in the allowed channels list`;
+        } else {
+          allowedChannels.push(channelId);
+          message = `Channel <#${channelId}> added to allowed channels list`;
+        }
+      } else if (subcommand === 'remove') {
+        const channelId = options[0].options[0].value;
+
+        if (allowedChannels.includes(channelId)) {
+          allowedChannels.splice(allowedChannels.indexOf(channelId), 1);
+          message = `Channel <#${channelId}> removed from allowed channels list`;
+        } else {
+          message = `Channel <#${channelId}> is not in the allowed channels list`;
+        }
+      }
+
+      // Save updated channels back to file
+      await setAllowedChannels(allowedChannels);
+
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: "Allowed channels updated",
+          content: message,
         }
-      })
+      });
     }
 
     if (name === 'config_allowed_roles') {
