@@ -7,6 +7,9 @@ const md = new MarkdownIt({
   html: true  // Enable HTML to support underline and small tags
 });
 
+// Disable markdown-it's list and heading processing
+md.disable(['list', 'heading']);
+
 // Customize rendering rules for MediaWiki format
 md.renderer.rules.strong_open = () => "'''";
 md.renderer.rules.strong_close = () => "'''";
@@ -15,6 +18,66 @@ md.renderer.rules.em_close = () => "''";
 md.renderer.rules.code_inline = (tokens, idx) => `<code>${tokens[idx].content}</code>`;
 md.renderer.rules.fence = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`;
 md.renderer.rules.code_block = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`;
+
+// List rendering rules for MediaWiki format
+md.renderer.rules.bullet_list_open = () => '';
+md.renderer.rules.bullet_list_close = () => '';
+md.renderer.rules.ordered_list_open = () => '';
+md.renderer.rules.ordered_list_close = () => '';
+
+md.renderer.rules.list_item_open = (tokens, idx) => {
+  try {
+    // Get the current token and its parent
+    const token = tokens[idx];
+    const parent = token?.parent;
+
+    // Determine if we're in an ordered list
+    const isOrdered = parent?.type === 'ordered_list';
+
+    // Calculate nesting level by counting list parents
+    let level = 1;  // Start at 1 since we're already in a list
+    let current = parent;
+    while (current?.parent) {
+      if (current.parent.type === 'bullet_list' || current.parent.type === 'ordered_list') {
+        level++;
+      }
+      current = current.parent;
+    }
+
+    // For ordered lists, cap at level 2 (# or ##)
+    if (isOrdered) {
+      level = Math.min(2, level);
+    }
+
+    // For ordered lists, use '#', for unordered use '*'
+    const marker = isOrdered ? '#' : '*';
+
+    // Add newline if needed
+    const needsNewline = idx > 0 && tokens[idx - 1]?.type !== 'bullet_list_open' && tokens[idx - 1]?.type !== 'ordered_list_open';
+    const prefix = needsNewline ? '\n' : '';
+
+    return prefix + marker.repeat(level) + ' ';
+  } catch (error) {
+    console.error('Error in list_item_open:', error);
+    return '* '; // Fallback to simple bullet point
+  }
+};
+
+md.renderer.rules.list_item_close = (tokens, idx) => {
+  try {
+    // Add newline if this isn't the last item
+    const nextToken = tokens[idx + 1];
+    const isLastItem = !nextToken ||
+      (nextToken.type !== 'list_item_open' &&
+       nextToken.type !== 'bullet_list_close' &&
+       nextToken.type !== 'ordered_list_close');
+
+    return isLastItem ? '\n' : '';
+  } catch (error) {
+    console.error('Error in list_item_close:', error);
+    return '\n'; // Fallback to newline
+  }
+};
 
 // Update link rendering to put URL first
 md.renderer.rules.link_open = (tokens, idx) => {
@@ -56,6 +119,87 @@ const processSubtext = (content) => {
   return content.replace(/^-#\s+(.+)$/gm, '<small>$1</small>');
 };
 
+// Add custom processing for lists
+const processLists = (content) => {
+  const lines = content.split('\n');
+  const processedLines = [];
+  let inList = false;
+  let firstIndentLevel = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Skip empty lines
+    if (!line.trim()) {
+      processedLines.push('');
+      continue;
+    }
+
+    // Check if this is a list item with indentation
+    const unorderedMatch = line.match(/^(\s*)[-*]\s+(.+)/);
+    const orderedMatch = line.match(/^(\s*)\d+\.\s+(.+)/);
+
+    if (unorderedMatch || orderedMatch) {
+      if (!inList) {
+        inList = true;
+        // Add blank line before list starts
+        processedLines.push('');
+      }
+
+      // Get indentation and content
+      const [, indent, content] = unorderedMatch || orderedMatch;
+
+      // Count indentation level (Discord uses 2 spaces)
+      const indentLevel = Math.floor(indent.length / 2);
+      console.log("Line:", line);
+      console.log("Indent length:", indent.length);
+      console.log("Indent level:", indentLevel);
+
+      // Store the first indent level we see
+      if (firstIndentLevel === null) {
+        firstIndentLevel = indentLevel;
+      }
+
+      // Adjust indent level relative to the first line
+      const adjustedLevel = Math.max(0, indentLevel - firstIndentLevel);
+
+      // For ordered lists, only use level 0 or 1
+      // For unordered lists, use full indentation
+      const finalLevel = orderedMatch
+        ? (adjustedLevel > 0 ? 1 : 0)  // Ordered lists: only level 0 or 1
+        : adjustedLevel;  // Unordered lists: full indentation
+
+      // Create marker based on list type and indentation
+      const marker = (orderedMatch ? '#' : '*').repeat(finalLevel + 1);
+
+      // Add the processed line
+      const processedLine = marker + ' ' + content;
+      console.log("Processed line:", processedLine);
+      processedLines.push(processedLine);
+    } else {
+      inList = false;
+      processedLines.push(line);
+    }
+  }
+
+  return processedLines.join('\n');
+};
+
+// Disable markdown-it's list processing
+md.disable(['list']);
+
+// Add a custom block rule to prevent markdown-it from processing lists
+md.block.ruler.before('list', 'custom_list', (state) => {
+  // Check if the line starts with a list marker
+  const line = state.src.split('\n')[state.line];
+  if (line && line.match(/^(?:[-*]|\d+\.)\s+/)) {
+    // Skip this line so markdown-it doesn't process it
+    state.line++;
+    return true;
+  }
+  return false;
+});
+
 /**
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
@@ -64,63 +208,74 @@ const processSubtext = (content) => {
    * @returns A string of the message formatted as wikitext
    */
 export function formatMessageToWikitext (message, authors, simpleDate = false) {
-    // Wanted format:
-    // *21:56: [[User:Ironwestie|Ironwestie]]: Hello all.
-    // *21:56: [[User:Brunocoolgamers|Brunocoolgamers]]: hii
-    // *21:56: [[User:Pokemonfreak777|Pokemonfreak777]]: hello
-
-    // {{DiscordLog|t=21:}}
     const parts = [];
-    // Add timestamp and author
     const timestamp = new Date(message.timestamp).toUTCString();
-    // timestamp is in format: Fri, 21 Mar 2025 21:56:00 GMT
-    // we want to format it to: 21:56
     const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
-
-    // map the author to a wikitext link based on the username
     const authorWikiAccount = authors.find(author => author.memberId === message.author.id)?.wikiAccount ?? message.author.username;
     const authorLink = `[[User:${authorWikiAccount}|${authorWikiAccount}]]`;
 
     parts.push(`*${timestampFormatted}: ${authorLink}:`);
 
-    // Add text content if it exists
     if (message.content) {
-      // Convert Discord markdown to wikitext
       let content = message.content;
+      console.log("Original content:", content);
+      const startsWithList = content.match(/^([-*]|\d+\.)\s+/);
+      const containsList = content.match(/(?:^|\n)(?:[-*]|\d+\.)\s+/);
 
-      // Handle Discord-specific formatting before markdown conversion
+      // Process lists first, before any markdown processing
+      content = content.replace(/(?:^|\n)(?:[-*]|\d+\.)\s+.*(?:\n(?:\s*[-*]|\s*\d+\.)\s+.*)*$/g, match => {
+        // Skip if this looks like a timestamp line
+        if (match.match(/^\*[A-Za-z]+,\s+\d+\s+[A-Za-z]+\s+\d{4}/)) {
+          return match;
+        }
+        console.log("Processing list block:", match);
+        const processed = processLists(match);
+        console.log("Processed list block:", processed);
+        return processed;
+      });
+      console.log("Content after list processing:", content);
+
+      // Then process other Discord-specific formatting
       content = content
-        // Process subtext first
-        .replace(/^-#\s+(.+)$/gm, match => {
-          return processSubtext(match);
-        })
-        // Process underline combinations
-        .replace(/__([\*]{3}.*?[\*]{3})__|__([\*]{2}.*?[\*]{2})__|__([\*].*?[\*])__|__(.*?)__/g, match => {
-          // Pre-process the underline combinations
-          return processUnderlineMarkdown(match);
-        })
-        // Discord user mentions
+        .replace(/^-#\s+(.+)$/gm, match => processSubtext(match))
+        .replace(/__([\*]{3}.*?[\*]{3})__|__([\*]{2}.*?[\*]{2})__|__([\*].*?[\*])__|__(.*?)__/g, match => processUnderlineMarkdown(match))
         .replace(/<@!?(\d+)>/g, (match, id) => {
           const member = authors.find(m => m.memberId === id);
           return member ? `[[User:${member.wikiAccount}|${member.displayName}]]` : match;
         })
-        // Discord channel mentions
         .replace(/<#(\d+)>/g, '#$1')
-        // Discord role mentions
         .replace(/<@&(\d+)>/g, '@$1')
-        // Discord custom emojis
         .replace(/<:([^:]+):(\d+)>/g, ':$1:');
+      console.log("Content after Discord formatting:", content);
 
-      // Convert markdown to wikitext
-      const wikitextContent = md.render(content)
-        // Clean up any HTML that might have been generated
-        .replace(/<\/?p>/g, '')
-        .replace(/\n$/, '');
+      // Only use markdown-it if there are no lists
+      let wikitextContent;
+      if (!containsList) {
+        wikitextContent = md.render(content)
+          .replace(/<\/?p>/g, '')
+          .replace(/\n$/, '');
+      } else {
+        wikitextContent = content;
+      }
+      console.log("Content after markdown rendering:", wikitextContent);
 
-      parts.push(wikitextContent);
+      // Process any remaining list items that weren't caught in a block
+      if (startsWithList && !content.match(/^\*[A-Za-z]+,\s+\d+\s+[A-Za-z]+\s+\d{4}/)) {
+        const lines = wikitextContent.split('\n');
+        const firstLine = lines[0];
+        if (firstLine.match(/^[-*]\s+/)) {
+          lines[0] = '* ' + firstLine.replace(/^[-*]\s+/, '');
+        } else if (firstLine.match(/^\d+\.\s+/)) {
+          lines[0] = '# ' + firstLine.replace(/^\d+\.\s+/, '');
+        }
+        wikitextContent = lines.join('\n');
+      }
+      console.log("Final wikitext content:", wikitextContent);
+
+      parts.push(startsWithList ? '\n' + wikitextContent : wikitextContent);
     }
 
-    // Add embed content if it exists
+    // Add embed and attachment content
     if (message.embeds?.length > 0) {
       message.embeds.forEach(embed => {
         if (embed.title) parts.push(`[Embed Title] ${embed.title}`);
@@ -129,14 +284,15 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
       });
     }
 
-    // Add attachment URLs if they exist
     if (message.attachments?.length > 0) {
       message.attachments.forEach(attachment => {
         parts.push(`[Attachment] ${attachment.url}`);
       });
     }
 
-    return parts.join(' ');
+    const result = parts.join(' ');
+    console.log("Final output:", result);
+    return result;
   }
 
 /**
