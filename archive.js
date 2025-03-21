@@ -214,6 +214,20 @@ const processQuotes = (content) => {
   return content.replace(/^>\s*(.+)$/gm, ' $1');
 };
 
+// Add custom processing for templates
+const processTemplates = (content) => {
+  // Match both anonymous and named parameter templates
+  return content.replace(/{{([^{}|]+)(\|[^{}]+)?}}/g, (match, templateName, parameters) => {
+    // Remove any leading/trailing whitespace from template name
+    templateName = templateName.trim();
+    // Don't add 't|' if it's already a t template
+    if (templateName.toLowerCase() === 't') {
+      return match;
+    }
+    return `{{t|${templateName}${parameters || ''}}}`;
+  });
+};
+
 /**
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
@@ -264,6 +278,10 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
         return processed;
       });
       console.log("Content after list processing:", content);
+
+      // Process templates before other Discord-specific formatting
+      content = processTemplates(content);
+      console.log("Content after template processing:", content);
 
       // Then process other Discord-specific formatting
       content = content
