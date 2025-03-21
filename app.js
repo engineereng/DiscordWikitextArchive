@@ -7,7 +7,18 @@ import {
   verifyKeyMiddleware,
 } from 'discord-interactions';
 import { getRandomEmoji } from './utils.js';
-import { formatMessageToWikitext, readDiscordThread, getAllowedChannels, setAllowedChannels, getAllowedRoles, setAllowedRoles } from './archive.js';
+import {
+  formatMessageToWikitext,
+  readDiscordThread,
+  getAllowedChannels,
+  setAllowedChannels,
+  getAllowedRoles,
+  setAllowedRoles,
+  getVerifiedMembers,
+  setVerifiedMembers,
+  getVerifiedRoles,
+  addRoleToMember
+} from './archive.js';
 
 // Create an express app
 const app = express();
@@ -326,6 +337,126 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         }
       });
     }
+
+    if (name === 'verified_members') {
+      // Check if we have options
+      if (!options || !options[0]) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: "No subcommand specified",
+          }
+        });
+      }
+
+      const subcommand = options[0].name; // 'add', 'remove', or 'list'
+
+      // if (subcommand === 'role') {
+      //   // /verified_members role <add|remove|list> <role_id>
+      //   let allowedRoles = [];
+      //   try {
+      //     const storedRoles = await getAllowedRoles();
+      //     allowedRoles = storedRoles;
+      //   } catch (err) {
+      //     // File doesn't exist yet or other error, start with empty array
+      //     allowedRoles = [];
+      //   }
+      //   const subcommand = options[0].options[0].name; // 'add', 'remove', or 'list'
+      //   const roleId = options[0].options[0].value;
+
+      //   let message;
+
+      //   if (subcommand === 'add') {
+      //     if (allowedRoles.includes(roleId)) {
+      //       message = `Role <@&${roleId}> is already given to verified members`;
+      //     } else {
+      //       allowedRoles.push(roleId);
+      //       message = `Role <@&${roleId}> is now given to verified members`;
+      //     }
+      //   } else if (subcommand === 'remove') {
+      //     if (allowedRoles.includes(roleId)) {
+      //       allowedRoles.splice(allowedRoles.indexOf(roleId), 1);
+      //       message = `Role <@&${roleId}> is no longer given to verified members`;
+      //     } else {
+      //       message = `Role <@&${roleId}> is not given to verified members`;
+      //     }
+      //   } else if (subcommand === 'list') {
+      //     if (allowedRoles.length === 0) {
+      //       message = "No roles are currently given to verified members.";
+      //     } else {
+      //       const rolesList = allowedRoles.map(roleId => `<@&${roleId}>`).join('\n');
+      //       message = "Roles that are given to verified members:\n" + rolesList;
+      //     }
+      //   }
+      //   await setAllowedRoles(allowedRoles);
+      //   return res.send({
+      //     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      //     data: {
+      //       content: message,
+      //     }
+      //   });
+      // }
+
+      let allowedMembers = [];
+      try {
+        const storedMembers = await getVerifiedMembers();
+        allowedMembers = storedMembers;
+      } catch (err) {
+        // File doesn't exist yet or other error, start with empty array
+        allowedMembers = [];
+      }
+
+      let message;
+      if (subcommand === 'list') {
+        // /verified_members list
+        // Get all members with a wiki account
+        const members = await getVerifiedMembers();
+        if (members.length === 0) {
+          message = "No members have a wiki account.";
+        } else {
+          const membersList = members.map(member => `<@${member.id}>`).join('\n');
+          message = "Members with a wiki account:\n" + membersList;
+        }
+      } else if (subcommand === 'add') {
+        // /verified_members add <member_id>
+        const memberId = options[0].options[0].value;
+
+        if (allowedMembers.includes(memberId)) {
+          message = `Member <@${memberId}> is already in the verified members list`;
+        } else {
+          allowedMembers.push(memberId);
+          message = `Member <@${memberId}> added to verified members list`;
+          // Add roles to member
+          // const verifiedRoles = await getVerifiedRoles();
+          // // For now, only one role is given to verified members
+          // const roleId = verifiedRoles[0];
+          // await addRoleToMember(memberId, req.body.guild_id, roleId);
+          // message = `Member <@${memberId}> added to verified members list and role <@&${roleId}>`;
+        }
+      } else if (subcommand === 'remove') {
+        // /verified_members remove <member_id>
+        const memberId = options[0].options[0].value;
+
+        if (allowedMembers.includes(memberId)) {
+          allowedMembers.splice(allowedMembers.indexOf(memberId), 1);
+          message = `Member <@${memberId}> removed from verified members list`;
+        } else {
+          message = `Member <@${memberId}> is not in the verified members list`;
+        }
+      }
+
+      // Save updated members back to file
+      await setVerifiedMembers(allowedMembers);
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: message,
+        }
+      });
+    }
+
+
 
     console.error(`unknown command: ${name}`);
     return res.status(400).json({ error: 'unknown command' });
