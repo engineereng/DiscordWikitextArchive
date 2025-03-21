@@ -351,51 +351,51 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       const subcommand = options[0].name; // 'add', 'remove', or 'list'
 
-      // if (subcommand === 'role') {
-      //   // /verified_members role <add|remove|list> <role_id>
-      //   let allowedRoles = [];
-      //   try {
-      //     const storedRoles = await getAllowedRoles();
-      //     allowedRoles = storedRoles;
-      //   } catch (err) {
-      //     // File doesn't exist yet or other error, start with empty array
-      //     allowedRoles = [];
-      //   }
-      //   const subcommand = options[0].options[0].name; // 'add', 'remove', or 'list'
-      //   const roleId = options[0].options[0].value;
+      if (subcommand === 'role') {
+        // /verified_members role <add|remove|list> <role_id>
+        let allowedRoles = [];
+        try {
+          const storedRoles = await getAllowedRoles();
+          allowedRoles = storedRoles;
+        } catch (err) {
+          // File doesn't exist yet or other error, start with empty array
+          allowedRoles = [];
+        }
+        const subcommand = options[0].options[0].name; // 'add', 'remove', or 'list'
+        const roleId = options[0].options[0].value;
 
-      //   let message;
+        let message;
 
-      //   if (subcommand === 'add') {
-      //     if (allowedRoles.includes(roleId)) {
-      //       message = `Role <@&${roleId}> is already given to verified members`;
-      //     } else {
-      //       allowedRoles.push(roleId);
-      //       message = `Role <@&${roleId}> is now given to verified members`;
-      //     }
-      //   } else if (subcommand === 'remove') {
-      //     if (allowedRoles.includes(roleId)) {
-      //       allowedRoles.splice(allowedRoles.indexOf(roleId), 1);
-      //       message = `Role <@&${roleId}> is no longer given to verified members`;
-      //     } else {
-      //       message = `Role <@&${roleId}> is not given to verified members`;
-      //     }
-      //   } else if (subcommand === 'list') {
-      //     if (allowedRoles.length === 0) {
-      //       message = "No roles are currently given to verified members.";
-      //     } else {
-      //       const rolesList = allowedRoles.map(roleId => `<@&${roleId}>`).join('\n');
-      //       message = "Roles that are given to verified members:\n" + rolesList;
-      //     }
-      //   }
-      //   await setAllowedRoles(allowedRoles);
-      //   return res.send({
-      //     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      //     data: {
-      //       content: message,
-      //     }
-      //   });
-      // }
+        if (subcommand === 'add') {
+          if (allowedRoles.includes(roleId)) {
+            message = `Role <@&${roleId}> is already given to verified members`;
+          } else {
+            allowedRoles.push(roleId);
+            message = `Role <@&${roleId}> is now given to verified members`;
+          }
+        } else if (subcommand === 'remove') {
+          if (allowedRoles.includes(roleId)) {
+            allowedRoles.splice(allowedRoles.indexOf(roleId), 1);
+            message = `Role <@&${roleId}> is no longer given to verified members`;
+          } else {
+            message = `Role <@&${roleId}> is not given to verified members`;
+          }
+        } else if (subcommand === 'list') {
+          if (allowedRoles.length === 0) {
+            message = "No roles are currently given to verified members.";
+          } else {
+            const rolesList = allowedRoles.map(roleId => `<@&${roleId}>`).join('\n');
+            message = "Roles that are given to verified members:\n" + rolesList;
+          }
+        }
+        await setAllowedRoles(allowedRoles);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: message,
+          }
+        });
+      }
 
       let allowedMembers = [];
       try {
@@ -427,11 +427,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           allowedMembers.push(memberId);
           message = `Member <@${memberId}> added to verified members list`;
           // Add roles to member
-          // const verifiedRoles = await getVerifiedRoles();
-          // // For now, only one role is given to verified members
-          // const roleId = verifiedRoles[0];
-          // await addRoleToMember(memberId, req.body.guild_id, roleId);
-          // message = `Member <@${memberId}> added to verified members list and role <@&${roleId}>`;
+          const verifiedRoles = await getVerifiedRoles();
+          // For now, only one role is given to verified members
+          const roleId = verifiedRoles[0];
+          await addRoleToMember(memberId, req.body.guild_id, roleId);
+          message = `Member <@${memberId}> added to verified members list and role <@&${roleId}>`;
         }
       } else if (subcommand === 'remove') {
         // /verified_members remove <member_id>
