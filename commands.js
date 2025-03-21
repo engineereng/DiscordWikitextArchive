@@ -40,9 +40,53 @@ const CONFIG_ALLOWED_CHANNELS_COMMAND = {
   description: "Change which channels can be archived",
   type: 1,
   integration_types: [0],
-  contexts: [0]
+  contexts: [0],
+  default_member_permissions: "8" // Requires Administrator permission (8)
 }
 
-const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND, CONFIG_ALLOWED_CHANNELS_COMMAND];
+const CONFIG_ALLOWED_ROLES_COMMAND = {
+  name: "config_allowed_roles",
+  description: "Change which roles can archive channels",
+  type: 1,
+  integration_types: [0],
+  contexts: [0],
+  default_member_permissions: "8", // Requires Administrator permission (8)
+  dm_permission: false, // Cannot be used in DMs
+  options: [
+    {
+      name: "list",
+      description: "List all roles that can archive channels",
+      type: 1 // 1 is SUB_COMMAND
+    },
+    {
+      name: "add",
+      description: "Add a role to the allowed list",
+      type: 1, // 1 is SUB_COMMAND
+      options: [
+        {
+          name: "role",
+          description: "The role to add to the allowed list",
+          type: 8, // 8 is ROLE type
+          required: true
+        }
+      ]
+    },
+    {
+      name: "remove",
+      description: "Remove a role from the allowed list",
+      type: 1, // 1 is SUB_COMMAND
+      options: [
+        {
+          name: "role",
+          description: "The role to remove from the allowed list",
+          type: 8, // 8 is ROLE type
+          required: true
+        }
+      ]
+    }
+  ]
+}
+
+const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND, CONFIG_ALLOWED_CHANNELS_COMMAND, CONFIG_ALLOWED_ROLES_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

@@ -9,7 +9,8 @@ import {
   verifyKeyMiddleware,
 } from 'discord-interactions';
 import { getRandomEmoji, DiscordRequest } from './utils.js';
-import { getShuffledOptions, getResult } from './game.js';
+import { promises as fs } from 'fs';
+import { formatMessageToWikitext, readDiscordThread } from './archive.js';
 
 // Create an express app
 const app = express();
@@ -24,88 +25,13 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   // Interaction type and data
   const { type, data, channel } = req.body;
 
-  /**
-   * Read a Discord thread
-   * @param {*} threadId The ID of the thread to read
-   * @returns A JSON array of messages from the thread
-   */
-  const readDiscordThread = async (threadId) => {
-    const response = await DiscordRequest(`channels/${threadId}/messages?limit=100`, {
-      method: 'GET'
-    });
-    const messages = await response.json();
-
-    // Log more details about each message
-    // messages.forEach(message => {
-    //   console.log('Message:', {
-    //     type: message.type,
-    //     content: message.content,
-    //     hasEmbeds: message.embeds?.length > 0,
-    //     hasAttachments: message.attachments?.length > 0,
-    //     timestamp: message.timestamp,
-    //     author: message.author.username,
-    //     message_reference: message.message_reference,
-    //     components: message.components,
-    //     flags: message.flags,
-    //     raw: message,
-    //     mentions: message.mentions,
-    //     mention_roles: message.mention_roles,
-    //     pinned: message.pinned,
-    //     mention_everyone: message.mention_everyone,
-    //     tts: message.tts,
-    //     position: message.position,
-    //     referenced_message: message.referenced_message
-    //   });
-    // });
-
-    return messages;
+  const getAllowedRoles = async () => {
+    const storedRoles = await fs.readFile('allowed_roles.json', 'utf8');
+    return JSON.parse(storedRoles);
   }
 
-  /**
-   * Format a message to wikitext
-   * @param {*} message The message to format. Format:
-   * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
-   * @returns A string of the message formatted as wikitext
-   */
-  const formatMessageToWikitext = (message, simpleDate = false) => {
-    // Wanted format:
-    // *21:56: [[User:Ironwestie|Ironwestie]]: Hello all.
-    // *21:56: [[User:Brunocoolgamers|Brunocoolgamers]]: hii
-    // *21:56: [[User:Pokemonfreak777|Pokemonfreak777]]: hello
-    const parts = [];
-    // Add timestamp and author
-    const timestamp = new Date(message.timestamp).toUTCString();
-    console.log(timestamp);
-    // timestamp is in format: Fri, 21 Mar 2025 21:56:00 GMT
-    // we want to format it to: 21:56
-    const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
-
-    // TODO map the author to a wikitext link based on the username
-    parts.push(`*${timestampFormatted}: ${message.author.username}:`);
-
-    // Add text content if it exists
-    if (message.content) {
-      // TODO format content based on the content (see moot_compact.py)
-      parts.push(message.content);
-    }
-
-    // Add embed content if it exists
-    if (message.embeds?.length > 0) {
-      message.embeds.forEach(embed => {
-        if (embed.title) parts.push(`[Embed Title] ${embed.title}`);
-        if (embed.description) parts.push(`[Embed Description] ${embed.description}`);
-        if (embed.url) parts.push(`[Embed URL] ${embed.url}`);
-      });
-    }
-
-    // Add attachment URLs if they exist
-    if (message.attachments?.length > 0) {
-      message.attachments.forEach(attachment => {
-        parts.push(`[Attachment] ${attachment.url}`);
-      });
-    }
-
-    return parts.join(' ');
+  const setAllowedRoles = async (roles) => {
+    await fs.writeFile('allowed_roles.json', JSON.stringify(roles));
   }
 
   /**
@@ -120,7 +46,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
    * See https://discord.com/developers/docs/interactions/application-commands#slash-commands
    */
   if (type === InteractionType.APPLICATION_COMMAND) {
-    const { name } = data;
+    const { name, options } = data;
 
     // "test" command
     if (name === 'test') {
@@ -136,6 +62,20 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
     if (name === 'archive') {
       const {type, id} = channel;
+
+      const allowedRoles = await getAllowedRoles();
+      // Get user roles from the member object in the interaction
+      const userRoles = req.body.member?.roles || [];
+      const hasPermission = allowedRoles.some(roleId => userRoles.includes(roleId));
+      if (!hasPermission) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.EPHEMERAL,
+            content: "You do not have permission to archive channels. You need to have a role that is in the allowed roles list.",
+          }
+        })
+      }
 
       if (type === 11) // 11 is PUBLIC_THREAD
       {
@@ -165,6 +105,92 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             }
           })
       }
+    }
+
+    if (name === 'config_allowed_channels') {
+      // TODO update the allowed channels
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "Allowed channels updated",
+        }
+      })
+    }
+
+    if (name === 'config_allowed_roles') {
+      // Check if we have options
+      if (!options || !options[0]) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: "No subcommand specified",
+          }
+        });
+      }
+
+      const subcommand = options[0].name; // 'add', 'remove', or 'list'
+
+      // Get current allowed roles from storage
+      let allowedRoles = [];
+      try {
+        const storedRoles = await getAllowedRoles();
+        allowedRoles = storedRoles;
+      } catch (err) {
+        // File doesn't exist yet or other error, start with empty array
+        allowedRoles = [];
+      }
+
+      let message;
+      if (subcommand === 'list') {
+        if (allowedRoles.length === 0) {
+          message = "No roles are currently allowed to archive channels.";
+        } else {
+          const rolesList = allowedRoles.map(roleId => `<@&${roleId}>`).join('\n');
+          message = "Roles that can archive channels:\n" + rolesList;
+        }
+      } else {
+        const roleId = options[0].options[0].value;
+
+        // Reject @everyone role (which has the same ID as the guild/server ID)
+        if (roleId === req.body.guild_id) {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL,
+              content: "The @everyone role cannot be added to or removed from the allowed roles list.",
+            }
+          });
+        }
+
+        const roleName = `<@&${roleId}>`; // Format as a role mention
+
+        if (subcommand === 'add') {
+          if (allowedRoles.includes(roleId)) {
+            message = `Role ${roleName} is already in the allowed roles list`;
+          } else {
+            allowedRoles.push(roleId);
+            message = `Role ${roleName} added to allowed roles list`;
+          }
+        } else if (subcommand === 'remove') {
+          const roleIndex = allowedRoles.indexOf(roleId);
+          if (roleIndex > -1) {
+            allowedRoles.splice(roleIndex, 1);
+            message = `Role ${roleName} removed from allowed roles list`;
+          } else {
+            message = `Role ${roleName} is not in the allowed roles list`;
+          }
+        }
+
+        // Save updated roles back to file
+        await setAllowedRoles(allowedRoles);
+      }
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: message,
+        }
+      });
     }
 
     console.error(`unknown command: ${name}`);
