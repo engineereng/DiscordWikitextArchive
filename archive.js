@@ -149,8 +149,20 @@ export async function setVerifiedRoles(roles) {
  * @param {string} roleId The ID of the role to add
  */
 export async function addRoleToMember(memberId, guildId, roleId) {
-    const response = await DiscordRequest(`guilds/${guildId}/members/${memberId}/roles/${roleId}`, {
-        method: 'PUT'
-    });
-    return response.json();
+    if (!memberId) throw new Error('memberId is required');
+    if (!guildId) throw new Error('guildId is required');
+    if (!roleId) throw new Error('roleId is required');
+
+    console.log(`Adding role ${roleId} to member ${memberId} in guild ${guildId}`);
+
+    try {
+        const response = await DiscordRequest(`guilds/${guildId}/members/${memberId}/roles/${roleId}`, {
+            method: 'PUT'
+        });
+        console.log('Role added successfully');
+        return response;
+    } catch (error) {
+        console.error('Error adding role:', error);
+        throw error;
+    }
 }

@@ -17,6 +17,7 @@ import {
   getVerifiedMembers,
   setVerifiedMembers,
   getVerifiedRoles,
+  setVerifiedRoles,
   addRoleToMember
 } from './archive.js';
 
@@ -349,20 +350,22 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
 
+      const { guild_id } = req.body;
       const subcommand = options[0].name; // 'add', 'remove', or 'list'
 
       if (subcommand === 'role') {
         // /verified_members role <add|remove|list> <role_id>
         let allowedRoles = [];
         try {
-          const storedRoles = await getAllowedRoles();
+          const storedRoles = await getVerifiedRoles();
           allowedRoles = storedRoles;
         } catch (err) {
           // File doesn't exist yet or other error, start with empty array
           allowedRoles = [];
         }
         const subcommand = options[0].options[0].name; // 'add', 'remove', or 'list'
-        const roleId = options[0].options[0].value;
+        const roleId = options[0].options[0].options[0]?.value;
+
 
         let message;
 
@@ -388,7 +391,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             message = "Roles that are given to verified members:\n" + rolesList;
           }
         }
-        await setAllowedRoles(allowedRoles);
+
+        await setVerifiedRoles(allowedRoles);
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
@@ -414,7 +418,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         if (members.length === 0) {
           message = "No members have a wiki account.";
         } else {
-          const membersList = members.map(member => `<@${member.id}>`).join('\n');
+          const membersList = members.map(member => `<@${member}>`).join('\n');
           message = "Members with a wiki account:\n" + membersList;
         }
       } else if (subcommand === 'add') {
@@ -425,13 +429,21 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           message = `Member <@${memberId}> is already in the verified members list`;
         } else {
           allowedMembers.push(memberId);
-          message = `Member <@${memberId}> added to verified members list`;
           // Add roles to member
           const verifiedRoles = await getVerifiedRoles();
           // For now, only one role is given to verified members
           const roleId = verifiedRoles[0];
-          await addRoleToMember(memberId, req.body.guild_id, roleId);
-          message = `Member <@${memberId}> added to verified members list and role <@&${roleId}>`;
+          if (roleId) {
+            try {
+              await addRoleToMember(memberId, guild_id, roleId);
+              message = `Member <@${memberId}> added to verified members list and role <@&${roleId}>`;
+            } catch (error) {
+              console.error('Error adding role:', error);
+              message = `Member <@${memberId}> added to verified members list but there was an error adding the role: ${error.message}`;
+            }
+          } else {
+            message = `Member <@${memberId}> added to verified members list but no role was given to them`;
+          }
         }
       } else if (subcommand === 'remove') {
         // /verified_members remove <member_id>
