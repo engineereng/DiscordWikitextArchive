@@ -234,6 +234,7 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
       let content = message.content;
       console.log("Original content:", content);
       const startsWithList = content.match(/^([-*]|\d+\.)\s+/);
+      const startsWithQuote = content.match(/^>\s+/);
       const containsList = content.match(/(?:^|\n)(?:[-*]|\d+\.)\s+/);
       const containsQuotes = content.match(/^>\s+/m);
 
@@ -310,7 +311,7 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
         return line;
       }).join('\n');
 
-      parts.push(startsWithList ? '\n' + wikitextContent : wikitextContent);
+      parts.push(startsWithList || startsWithQuote ? '\n' + wikitextContent : wikitextContent);
     }
 
     // Add embed and attachment content
