@@ -84,11 +84,19 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       } else if (subcommand === 'thread') {
         // When using /archive thread <id>, use the provided thread ID
         threadId = options[0].options[0].value;
-        console.log('threadId', threadId);
       }
 
-      // Get the thread's data to check its parent
+      // Send initial response
+      await res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          flags: InteractionResponseFlags.EPHEMERAL,
+          content: "Processing your archive request...",
+        }
+      });
+
       try {
+        // Get the thread's data to check its parent
         const response = await fetch(`https://discord.com/api/v10/channels/${threadId}`, {
           headers: {
             'Authorization': `Bot ${process.env.DISCORD_TOKEN}`,
@@ -96,67 +104,88 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
 
         if (!response.ok) {
-          return res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              flags: InteractionResponseFlags.EPHEMERAL,
+          const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
               content: "Could not find the specified thread. Make sure the ID is correct and the bot has access to it.",
-            }
+              flags: InteractionResponseFlags.EPHEMERAL
+            })
           });
+          return;
         }
 
         const threadData = await response.json();
 
         // Verify it's a thread
         if (threadData.type !== 11) {
-          return res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              flags: InteractionResponseFlags.EPHEMERAL,
+          const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
               content: "The specified channel is not a thread.",
-            }
+              flags: InteractionResponseFlags.EPHEMERAL
+            })
           });
+          return;
         }
 
         // Check if the thread's parent channel is in the allowed list
         const allowedChannels = await getAllowedChannels();
         const isAllowed = allowedChannels.includes(threadData.parent_id);
         if (!isAllowed) {
-          return res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              flags: InteractionResponseFlags.EPHEMERAL,
+          const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
               content: "This thread's parent channel is not in the allowed channels list.",
-            }
+              flags: InteractionResponseFlags.EPHEMERAL
+            })
           });
+          return;
         }
 
-        console.log("we alive");
         // Archive the thread
         const messages = await readDiscordThread(threadId);
         const messagesReversed = messages.reverse();
-        const fileContent = "```\n" + messagesReversed.map(message => {
+        const fileContent = messagesReversed.map(message => {
           return formatMessageToWikitext(message);
-        }).join('\n\n') + "\n```";
-        console.log("fileContent", fileContent);
+        }).join('\n\n');
 
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseFlags.EPHEMERAL,
-            content: fileContent || "No content found in thread.",
-          }
+        // Create a buffer from the content
+        const buffer = Buffer.from(fileContent, 'utf8');
+
+        // Get thread name for the filename
+        const threadName = threadData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+        // Send follow-up with file
+        const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
+        const formData = new FormData();
+        formData.append('content', "Here's the archived thread content:");
+        formData.append('file', new Blob([buffer]), `${threadName}.txt`);
+
+        await fetch(webhookUrl, {
+          method: 'POST',
+          body: formData
         });
+
+        return;
 
       } catch (error) {
-        console.error('Error fetching thread data:', error);
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseFlags.EPHEMERAL,
+        console.error('Error processing archive request:', error);
+        const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             content: "An error occurred while trying to archive the thread.",
-          }
+            flags: InteractionResponseFlags.EPHEMERAL
+          })
         });
+        return;
       }
     }
 
