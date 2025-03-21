@@ -282,9 +282,9 @@ describe('Discord to Wikitext Conversion', () => {
       };
       expect(formatMessageToWikitext(message, authors)).toBe(
         '*Fri, 21 Mar 2025 21:39:50 GMT: [[User:Ironwestie|Ironwestie]]: ' +
-        "'''Hello''' [[User:Ironwestie|Ironwestie]]!\n\n" +
+        "'''Hello''' [[User:Ironwestie|Ironwestie]]!\n\n\n" +
         '# First item with a [[Katamari Day|link]]\n' +
-        "# Second item with ''emphasis''\n\n" +
+        "# Second item with ''emphasis''\n\n\n" +
         ' A quote with <u>underline</u>'
       );
     });

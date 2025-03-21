@@ -158,19 +158,6 @@ export const processLinks = (content) => {
     return match;
   });
 
-  // Then handle raw URLs
-  content = content.replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/Template:([^\s\]]+)/g, (match, templateName) => {
-    return `{{t|${templateName.replace(/_/g, ' ')}}}`;
-  });
-
-  content = content.replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/Category:([^\s\]]+)/g, (match, categoryName) => {
-    return `[[:Category:${categoryName.replace(/_/g, ' ')}]]`;
-  });
-
-  content = content.replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/([^\s\]]+)/g, (match, pageName) => {
-    return `[[${pageName.replace(/_/g, ' ')}]]`;
-  });
-
   return content;
 };
 
@@ -344,37 +331,12 @@ export const renderContent = (content, { containsList, containsQuotes } = {}) =>
 export const convertDiscordToWikitext = (content, authors = []) => {
   const startsWithList = contentStartsWith.list(content);
   const startsWithQuote = contentStartsWith.quote(content);
-  const containsList = contentContains.list(content);
-  const containsQuotes = contentContains.quote(content);
 
-  // Process quotes first
-  content = processQuotes(content);
-
-  // Process headings next (but skip lines that look like ordered lists)
-  content = content.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, text) => {
-    // Skip if this looks like an ordered list (has a number before the period)
-    if (text.match(/^\d+\./)) {
-      return match;
-    }
-    return processHeadings(match);
-  });
-
-  // Process lists next, before any markdown processing
-  content = content.replace(/(?:^|\n)(?:[-*]|\d+\.)\s+.*(?:\n(?:\s*[-*]|\s*\d+\.)\s+.*)*$/g, match => {
-    // Skip if this looks like a timestamp line
-    if (match.match(/^\*[A-Za-z]+,\s+\d+\s+[A-Za-z]+\s+\d{4}/)) {
-      return match;
-    }
-    return processLists(match);
-  });
-
-  // Process templates before other Discord-specific formatting
+  // First process templates and links
   content = processTemplates(content);
-
-  // Process links before markdown rendering
   content = processLinks(content);
 
-  // Then process other Discord-specific formatting
+  // Process Discord-specific formatting
   content = content
     .replace(/^-#\s+(.+)$/gm, match => processSubtext(match))
     .replace(/__([\*]{3}.*?[\*]{3})__|__([\*]{2}.*?[\*]{2})__|__([\*].*?[\*])__|__(.*?)__/g, match => processUnderlineMarkdown(match))
@@ -386,31 +348,68 @@ export const convertDiscordToWikitext = (content, authors = []) => {
     .replace(/<@&(\d+)>/g, '@$1')
     .replace(/<:([^:]+):(\d+)>/g, ':$1:');
 
-  // Render markdown content
-  let wikitextContent = renderContent(content, { containsList, containsQuotes });
+  // Split content into lines for processing
+  let lines = content.split('\n');
+  let processedLines = [];
+  let inList = false;
+  let listIndent = 0;
 
-  // Process any remaining list items that weren't caught in a block
-  if (startsWithList && !content.match(/^\*[A-Za-z]+,\s+\d+\s+[A-Za-z]+\s+\d{4}/)) {
-    const lines = wikitextContent.split('\n');
-    const firstLine = lines[0];
-    if (firstLine.match(/^[-*]\s+/)) {
-      lines[0] = '* ' + firstLine.replace(/^[-*]\s+/, '');
-    } else if (firstLine.match(/^\d+\.\s+/)) {
-      lines[0] = '# ' + firstLine.replace(/^\d+\.\s+/, '');
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    const isQuote = line.match(/^>\s*(.+)$/);
+    const unorderedMatch = line.match(/^(\s*)[-*]\s+(.+)/);
+    const orderedMatch = line.match(/^(\s*)\d+\.\s+(.+)/);
+
+    if (isQuote) {
+      // Process quote content with markdown
+      const quoteContent = isQuote[1];
+      const renderedContent = md.render(quoteContent)
+        .replace(/<\/?p>/g, '')
+        .replace(/\n$/, '');
+      processedLines.push(' ' + renderedContent);
+    } else if (unorderedMatch || orderedMatch) {
+      if (!inList) {
+        inList = true;
+        processedLines.push('');
+      }
+
+      const [, indent, itemContent] = unorderedMatch || orderedMatch;
+      const indentLevel = Math.floor(indent.length / 2);
+
+      // Render markdown for list item content
+      const renderedContent = md.render(itemContent)
+        .replace(/<\/?p>/g, '')
+        .replace(/\n$/, '');
+
+      // Create marker based on list type and indentation
+      const marker = (orderedMatch ? '#' : '*').repeat(indentLevel + 1);
+      processedLines.push(marker + ' ' + renderedContent);
+    } else {
+      if (inList) {
+        inList = false;
+        processedLines.push('');
+      }
+      // Process regular lines with markdown
+      const renderedContent = md.render(line)
+        .replace(/<\/?p>/g, '')
+        .replace(/\n$/, '');
+      processedLines.push(renderedContent);
     }
-    wikitextContent = lines.join('\n');
   }
 
-  // Ensure quotes have proper spacing
-  wikitextContent = wikitextContent.split('\n').map(line => {
-    if (line.startsWith(' ')) {
-      // Preserve exactly one space at the start for quotes
-      return ' ' + line.trimLeft();
-    }
-    return line;
-  }).join('\n');
+  // Process raw URLs
+  content = processedLines.join('\n')
+    .replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/Template:([^\s\]]+)/g, (match, templateName) => {
+      return `{{t|${templateName.replace(/_/g, ' ')}}}`;
+    })
+    .replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/Category:([^\s\]]+)/g, (match, categoryName) => {
+      return `[[:Category:${categoryName.replace(/_/g, ' ')}]]`;
+    })
+    .replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/([^\s\]]+)/g, (match, pageName) => {
+      return `[[${pageName.replace(/_/g, ' ')}]]`;
+    });
 
-  return startsWithList || startsWithQuote ? '\n' + wikitextContent : wikitextContent;
+  return startsWithList || startsWithQuote ? '\n' + content : content;
 };
 
 // Export markdown-it instance if needed elsewhere
