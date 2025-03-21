@@ -150,7 +150,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
         // Archive the thread
         const messages = await readDiscordThread(threadId);
-        const messagesReversed = messages.reverse();
+        // Filter out bot messages and reverse the order
+        const messagesReversed = messages
+          .filter(message => !message.author.bot) // Remove bot messages
+          .reverse();
         const fileContent = messagesReversed.map(message => {
           return formatMessageToWikitext(message);
         }).join('\n\n');
@@ -164,7 +167,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         // Send follow-up with file
         const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
         const formData = new FormData();
-        formData.append('content', "Here's the archived thread content:");
+        formData.append('payload_json', JSON.stringify({
+          content: "Here's the archived thread content:",
+          flags: InteractionResponseFlags.EPHEMERAL
+        }));
         formData.append('file', new Blob([buffer]), `${threadName}.txt`);
 
         await fetch(webhookUrl, {
