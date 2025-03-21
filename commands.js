@@ -51,6 +51,7 @@ const CONFIG_ALLOWED_ROLES_COMMAND = {
   integration_types: [0],
   contexts: [0],
   default_member_permissions: "8", // Requires Administrator permission (8)
+  dm_permission: false, // Cannot be used in DMs
   options: [
     {
       name: "list",
