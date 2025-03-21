@@ -6,7 +6,7 @@ import { promises as fs } from 'fs';
    * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
    * @returns A string of the message formatted as wikitext
    */
-export function formatMessageToWikitext (message, simpleDate = false) {
+export function formatMessageToWikitext (message, authors, simpleDate = false) {
     // Wanted format:
     // *21:56: [[User:Ironwestie|Ironwestie]]: Hello all.
     // *21:56: [[User:Brunocoolgamers|Brunocoolgamers]]: hii
@@ -19,7 +19,10 @@ export function formatMessageToWikitext (message, simpleDate = false) {
     const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
 
     // TODO map the author to a wikitext link based on the username
-    parts.push(`*${timestampFormatted}: ${message.author.username}:`);
+    const authorWikiAccount = authors.find(author => author.memberId === message.author.id)?.wikiAccount;
+    const authorLink = `[[User:${authorWikiAccount}|${authorWikiAccount}]]`;
+
+    parts.push(`*${timestampFormatted}: ${authorLink}:`);
 
     // Add text content if it exists
     if (message.content) {
