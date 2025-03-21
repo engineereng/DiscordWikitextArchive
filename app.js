@@ -9,7 +9,7 @@ import {
   verifyKeyMiddleware,
 } from 'discord-interactions';
 import { getRandomEmoji, DiscordRequest } from './utils.js';
-import { getShuffledOptions, getResult } from './game.js';
+import { promises as fs } from 'fs';
 
 // Create an express app
 const app = express();
@@ -120,7 +120,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
    * See https://discord.com/developers/docs/interactions/application-commands#slash-commands
    */
   if (type === InteractionType.APPLICATION_COMMAND) {
-    const { name } = data;
+    const { name, options } = data;
 
     // "test" command
     if (name === 'test') {
@@ -165,6 +165,80 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             }
           })
       }
+    }
+
+    if (name === 'config_allowed_channels') {
+      // TODO update the allowed channels
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "Allowed channels updated",
+        }
+      })
+    }
+
+    if (name === 'config_allowed_roles') {
+      // Check if we have options
+      if (!options || !options[0]) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: "No subcommand specified",
+          }
+        });
+      }
+
+      const subcommand = options[0].name; // 'add', 'remove', or 'list'
+
+      // Get current allowed roles from storage
+      let allowedRoles = [];
+      try {
+        const storedRoles = await fs.readFile('allowed_roles.json', 'utf8');
+        allowedRoles = JSON.parse(storedRoles);
+      } catch (err) {
+        // File doesn't exist yet or other error, start with empty array
+        allowedRoles = [];
+      }
+
+      let message;
+      if (subcommand === 'list') {
+        if (allowedRoles.length === 0) {
+          message = "No roles are currently allowed to archive channels.";
+        } else {
+          const rolesList = allowedRoles.map(roleId => `<@&${roleId}>`).join('\n');
+          message = "Roles that can archive channels:\n" + rolesList;
+        }
+      } else {
+        const roleId = options[0].options[0].value;
+        const roleName = `<@&${roleId}>`; // Format as a role mention
+
+        if (subcommand === 'add') {
+          if (allowedRoles.includes(roleId)) {
+            message = `Role ${roleName} is already in the allowed roles list`;
+          } else {
+            allowedRoles.push(roleId);
+            message = `Role ${roleName} added to allowed roles list`;
+          }
+        } else if (subcommand === 'remove') {
+          const roleIndex = allowedRoles.indexOf(roleId);
+          if (roleIndex > -1) {
+            allowedRoles.splice(roleIndex, 1);
+            message = `Role ${roleName} removed from allowed roles list`;
+          } else {
+            message = `Role ${roleName} is not in the allowed roles list`;
+          }
+        }
+
+        // Save updated roles back to file
+        await fs.writeFile('allowed_roles.json', JSON.stringify(allowedRoles));
+      }
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: message,
+        }
+      });
     }
 
     console.error(`unknown command: ${name}`);
