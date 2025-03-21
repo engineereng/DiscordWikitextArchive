@@ -57,6 +57,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         data: {
           // Fetches a random emoji to send from a helper function
           content: `hello world ${getRandomEmoji()}`,
+          flags: 4096 // silent flag to prevent the bot from sending alert messages
         },
       });
     }
@@ -260,6 +261,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: message,
+          flags: 4096 // silent flag to prevent the bot from sending alert messages
         }
       });
     }
@@ -309,22 +311,20 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           });
         }
 
-        const roleName = `<@&${roleId}>`; // Format as a role mention
-
         if (subcommand === 'add') {
           if (allowedRoles.includes(roleId)) {
-            message = `Role ${roleName} is already in the allowed roles list`;
+            message = `Role <@&${roleId}> is already in the allowed roles list`;
           } else {
             allowedRoles.push(roleId);
-            message = `Role ${roleName} added to allowed roles list`;
+            message = `Role <@&${roleId}> added to allowed roles list`;
           }
         } else if (subcommand === 'remove') {
           const roleIndex = allowedRoles.indexOf(roleId);
           if (roleIndex > -1) {
             allowedRoles.splice(roleIndex, 1);
-            message = `Role ${roleName} removed from allowed roles list`;
+            message = `Role <@&${roleId}> removed from allowed roles list`;
           } else {
-            message = `Role ${roleName} is not in the allowed roles list`;
+            message = `Role <@&${roleId}> is not in the allowed roles list`;
           }
         }
 
@@ -336,6 +336,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: message,
+          flags: 4096 // silent flag
         }
       });
     }
@@ -398,6 +399,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
             content: message,
+            flags: 4096 // silent flag to prevent the bot from sending alert messages
           }
         });
       }
@@ -480,6 +482,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: message,
+          flags: 4096 // silent flag to prevent the bot from sending alert messages
         }
       });
     }
