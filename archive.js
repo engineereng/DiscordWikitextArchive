@@ -1,8 +1,45 @@
 import { DiscordRequest } from './utils.js';
 import { promises as fs } from 'fs';
+import MarkdownIt from 'markdown-it';
+
+// Initialize markdown-it with custom rendering rules for MediaWiki format
+const md = new MarkdownIt({
+  html: true  // Enable HTML to support underline tags
+});
+
+// Customize rendering rules for MediaWiki format
+md.renderer.rules.strong_open = () => "'''";
+md.renderer.rules.strong_close = () => "'''";
+md.renderer.rules.em_open = () => "''";
+md.renderer.rules.em_close = () => "''";
+md.renderer.rules.code_inline = (tokens, idx) => `<code>${tokens[idx].content}</code>`;
+md.renderer.rules.link_open = (tokens, idx) => {
+  const href = tokens[idx].attrs.find(attr => attr[0] === 'href')[1];
+  return `[${href} `;
+};
+md.renderer.rules.link_close = () => "]";
+
+// Add custom processing for underline combinations
+const processUnderlineMarkdown = (content) => {
+  // Handle __***text***__ (underline + bold + italic)
+  content = content.replace(/__([\*]{3}(.*?)[\*]{3})__/g, '<u>\'\'\'\'\'$2\'\'\'\'\'</u>');
+
+  // Handle __**text**__ (underline + bold)
+  content = content.replace(/__([\*]{2}(.*?)[\*]{2})__/g, '<u>\'\'\'$2\'\'\'</u>');
+
+  // Handle __*text*__ (underline + italic)
+  content = content.replace(/__([\*](.*?)[\*])__/g, '<u>\'\'$2\'\'</u>');
+
+  // Handle __text__ (just underline)
+  content = content.replace(/__(.*?)__/g, '<u>$1</u>');
+
+  return content;
+};
+
 /**
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
+   * @param {Array} authors The array of verified members
    * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
    * @returns A string of the message formatted as wikitext
    */
@@ -11,6 +48,8 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
     // *21:56: [[User:Ironwestie|Ironwestie]]: Hello all.
     // *21:56: [[User:Brunocoolgamers|Brunocoolgamers]]: hii
     // *21:56: [[User:Pokemonfreak777|Pokemonfreak777]]: hello
+
+    // {{DiscordLog|t=21:}}
     const parts = [];
     // Add timestamp and author
     const timestamp = new Date(message.timestamp).toUTCString();
@@ -18,16 +57,43 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
     // we want to format it to: 21:56
     const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
 
-    // TODO map the author to a wikitext link based on the username
-    const authorWikiAccount = authors.find(author => author.memberId === message.author.id)?.wikiAccount;
+    // map the author to a wikitext link based on the username
+    const authorWikiAccount = authors.find(author => author.memberId === message.author.id)?.wikiAccount ?? message.author.username;
     const authorLink = `[[User:${authorWikiAccount}|${authorWikiAccount}]]`;
 
     parts.push(`*${timestampFormatted}: ${authorLink}:`);
 
     // Add text content if it exists
     if (message.content) {
-      // TODO format content based on the content (see moot_compact.py)
-      parts.push(message.content);
+      // Convert Discord markdown to wikitext
+      let content = message.content;
+
+      // Handle Discord-specific formatting before markdown conversion
+      content = content
+        // Process underline combinations first
+        .replace(/__([\*]{3}.*?[\*]{3})__|__([\*]{2}.*?[\*]{2})__|__([\*].*?[\*])__|__(.*?)__/g, match => {
+          // Pre-process the underline combinations
+          return processUnderlineMarkdown(match);
+        })
+        // Discord user mentions
+        .replace(/<@!?(\d+)>/g, (match, id) => {
+          const member = authors.find(m => m.memberId === id);
+          return member ? `[[User:${member.wikiAccount}|${member.displayName}]]` : match;
+        })
+        // Discord channel mentions
+        .replace(/<#(\d+)>/g, '#$1')
+        // Discord role mentions
+        .replace(/<@&(\d+)>/g, '@$1')
+        // Discord custom emojis
+        .replace(/<:([^:]+):(\d+)>/g, ':$1:');
+
+      // Convert markdown to wikitext
+      const wikitextContent = md.render(content)
+        // Clean up any HTML that might have been generated
+        .replace(/<\/?p>/g, '')
+        .replace(/\n$/, '');
+
+      parts.push(wikitextContent);
     }
 
     // Add embed content if it exists
