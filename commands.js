@@ -37,7 +37,7 @@ const ARCHIVE_COMMAND = {
 
 const CONFIG_ALLOWED_CHANNELS_COMMAND = {
   name: "config_allowed_channels",
-  description: "Change which channels can be archived",
+  description: "Change which channels can have their threads archived",
   type: 1,
   integration_types: [0],
   contexts: [0],
@@ -46,7 +46,7 @@ const CONFIG_ALLOWED_CHANNELS_COMMAND = {
   options: [
     {
       name: "list",
-      description: "List all channels that can be archived",
+      description: "List all channels that can have their threads archived",
       type: 1 // 1 is SUB_COMMAND
     },
     {
@@ -58,7 +58,8 @@ const CONFIG_ALLOWED_CHANNELS_COMMAND = {
           name: "channel",
           description: "The channel to add to the allowed list",
           type: 7, // 7 is CHANNEL type
-          required: true
+          required: true,
+          channel_types: [0, 15] // Only text channels (0) and forum channels (15)
         }
       ]
     },
@@ -71,7 +72,8 @@ const CONFIG_ALLOWED_CHANNELS_COMMAND = {
           name: "channel",
           description: "The channel to remove from the allowed list",
           type: 7, // 7 is CHANNEL type
-          required: true
+          required: true,
+          channel_types: [0, 15] // Only text channels (0) and forum channels (15)
         }
       ]
     }

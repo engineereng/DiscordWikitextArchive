@@ -61,7 +61,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     if (name === 'archive') {
-      const {type, id} = channel;
+      const {type, id, parent_id} = channel;
 
       const allowedRoles = await getAllowedRoles();
       // Get user roles from the member object in the interaction
@@ -79,16 +79,15 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       if (type === 11) // 11 is PUBLIC_THREAD. It includes both threads and forum posts.
       {
-        // TODO check if the thread is a moot thread or a forum thread
-        // check if the thread is in the allowed channels list
+        // Check if the thread's parent channel is in the allowed channels list
         const allowedChannels = await getAllowedChannels();
-        const isAllowed = allowedChannels.includes(id);
+        const isAllowed = allowedChannels.includes(parent_id);
         if (!isAllowed) {
           return res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
               flags: InteractionResponseFlags.EPHEMERAL,
-              content: "This thread is not in the allowed channels list.",
+              content: "This thread's parent channel is not in the allowed channels list.",
             }
           })
         }
