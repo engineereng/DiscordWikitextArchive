@@ -237,6 +237,36 @@ describe('Discord to Wikitext Conversion', () => {
     });
   });
 
+  describe('Headings', () => {
+    test('Heading with one hash', () => {
+      const input = '# Heading';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '\n\n<h2> Heading </h2>'
+      );
+    });
+
+    test('Heading with two hashes', () => {
+      const input = '## Heading';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '\n\n<h3> Heading </h3>'
+      );
+    });
+
+    test('Heading with three hashes', () => {
+      const input = '### Heading';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '\n\n<h4> Heading </h4>'
+      );
+    });
+
+    test('Heading with four hashes', () => {
+      const input = '#### Heading';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '\n\n#### Heading'
+      );
+    });
+  });
+
   describe('Full Message Formatting', () => {
     test('Message with masked, no embed template link', () => {
       const message = {
