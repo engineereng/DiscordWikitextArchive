@@ -267,6 +267,43 @@ describe('Discord to Wikitext Conversion', () => {
     });
   });
 
+  describe('Voting emojis', () => {
+    test('Simple emoji', () => {
+      const input = ':smile:';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        ':smile:'
+      );
+    });
+
+    test('Support emoji', () => {
+      const input = ':support:';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '[[File:Voting-support.svg|20px|link=]]'
+      );
+    });
+
+    test('Neutral emoji', () => {
+      const input = ':neutral:';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '[[File:Voting-neutral.svg|20px|link=]]'
+      );
+    });
+
+    test('Oppose emoji', () => {
+      const input = ':oppose:';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '[[File:Voting-oppose.svg|20px|link=]]'
+      );
+    });
+
+    test('Restructure emoji', () => {
+      const input = ':restructure:';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '[[File:Voting-restructure.svg|20px|link=]]'
+      );
+    });
+  });
+
   describe('Full Message Formatting', () => {
     test('Message with masked, no embed template link', () => {
       const message = {
