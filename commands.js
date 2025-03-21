@@ -29,10 +29,31 @@ const TEST_COMMAND = {
 // archive command
 const ARCHIVE_COMMAND = {
   name: 'archive',
-  description: "Archive this channel",
+  description: "Archive a thread",
   type: 1,
   integration_types: [0],
-  contexts: [0]
+  contexts: [0],
+  options: [
+    {
+      name: "this",
+      description: "Archive the current thread (must be used inside a thread)",
+      type: 1 // SUB_COMMAND
+    },
+    {
+      name: "thread",
+      description: "Archive a specific thread",
+      type: 1, // SUB_COMMAND
+      options: [
+        {
+          name: "thread",
+          description: "The thread to archive",
+          type: 7, // 7 is CHANNEL type
+          channel_types: [11], // 11 is PUBLIC_THREAD
+          required: true
+        }
+      ]
+    }
+  ]
 };
 
 const ALLOWED_CHANNELS_COMMAND = {

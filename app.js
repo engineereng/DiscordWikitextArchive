@@ -49,10 +49,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     if (name === 'archive') {
-      const {type, id, parent_id} = channel;
+      const {type, id: channelId, parent_id} = channel;
 
+      // Get and verify user permissions first
       const allowedRoles = await getAllowedRoles();
-      // Get user roles from the member object in the interaction
       const userRoles = req.body.member?.roles || [];
       const hasPermission = allowedRoles.some(roleId => userRoles.includes(roleId));
       if (!hasPermission) {
@@ -60,16 +60,67 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
             flags: InteractionResponseFlags.EPHEMERAL,
-            content: "You do not have permission to archive channels. You need to have a role that is in the allowed roles list.",
+            content: "You do not have permission to archive threads. You need to have a role that is in the allowed roles list.",
           }
-        })
+        });
       }
 
-      if (type === 11) // 11 is PUBLIC_THREAD. It includes both threads and forum posts.
-      {
-        // Check if the thread's parent channel is in the allowed channels list
+      // Get the subcommand and thread ID
+      const subcommand = options[0].name;
+      let threadId;
+
+      if (subcommand === 'this') {
+        // When using /archive this, we must be inside a thread
+        if (type !== 11) { // 11 is PUBLIC_THREAD
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL,
+              content: "The '/archive this' command can only be used inside a thread.",
+            }
+          });
+        }
+        threadId = channelId;
+      } else if (subcommand === 'thread') {
+        // When using /archive thread <id>, use the provided thread ID
+        threadId = options[0].options[0].value;
+        console.log('threadId', threadId);
+      }
+
+      // Get the thread's data to check its parent
+      try {
+        const response = await fetch(`https://discord.com/api/v10/channels/${threadId}`, {
+          headers: {
+            'Authorization': `Bot ${process.env.DISCORD_TOKEN}`,
+          },
+        });
+
+        if (!response.ok) {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL,
+              content: "Could not find the specified thread. Make sure the ID is correct and the bot has access to it.",
+            }
+          });
+        }
+
+        const threadData = await response.json();
+
+        // Verify it's a thread
+        if (threadData.type !== 11) {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL,
+              content: "The specified channel is not a thread.",
+            }
+          });
+        }
+
+        // Check if the thread's parent channel is in the allowed list
         const allowedChannels = await getAllowedChannels();
-        const isAllowed = allowedChannels.includes(parent_id);
+        const isAllowed = allowedChannels.includes(threadData.parent_id);
         if (!isAllowed) {
           return res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -77,14 +128,17 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               flags: InteractionResponseFlags.EPHEMERAL,
               content: "This thread's parent channel is not in the allowed channels list.",
             }
-          })
+          });
         }
-        const messages = await readDiscordThread(id);
-        // Reverse the messages array
+
+        console.log("we alive");
+        // Archive the thread
+        const messages = await readDiscordThread(threadId);
         const messagesReversed = messages.reverse();
         const fileContent = "```\n" + messagesReversed.map(message => {
           return formatMessageToWikitext(message);
         }).join('\n\n') + "\n```";
+        console.log("fileContent", fileContent);
 
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -92,17 +146,17 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             flags: InteractionResponseFlags.EPHEMERAL,
             content: fileContent || "No content found in thread.",
           }
-        })
-      } else {
-          // Refuse to archive the current channel
-          return res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              //
-              flags: InteractionResponseFlags.EPHEMERAL,
-              content: "You may only archive threads and forums",
-            }
-          })
+        });
+
+      } catch (error) {
+        console.error('Error fetching thread data:', error);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.EPHEMERAL,
+            content: "An error occurred while trying to archive the thread.",
+          }
+        });
       }
     }
 

@@ -56,7 +56,6 @@ export async function readDiscordThread (threadId) {
         method: 'GET'
     });
     const messages = await response.json();
-
     // Log more details about each message
     // messages.forEach(message => {
     //   console.log('Message:', {
