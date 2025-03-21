@@ -91,20 +91,66 @@ export async function setAllowedChannels(channels) {
     await fs.writeFile('allowed_channels.json', JSON.stringify(channels));
 }
 
+/**
+ * Get the roles that are allowed to archive threads
+ * @returns A JSON array of role IDs
+ */
 export async function getAllowedRoles() {
     const storedRoles = await fs.readFile('allowed_roles.json', 'utf8');
     return JSON.parse(storedRoles);
-  }
+}
 
+/**
+ * Set the roles that are allowed to archive threads
+ * @param {Array} roles A JSON array of role IDs
+ */
 export async function setAllowedRoles(roles) {
     await fs.writeFile('allowed_roles.json', JSON.stringify(roles));
 }
 
+/**
+ * Get the members that are verified
+ * @returns A JSON array of member IDs
+ */
 export async function getVerifiedMembers() {
     const storedMembers = await fs.readFile('verified_members.json', 'utf8');
     return JSON.parse(storedMembers);
 }
 
+/**
+ * Set the members that are verified
+ * @param {Array} members A JSON array of member IDs
+ */
 export async function setVerifiedMembers(members) {
     await fs.writeFile('verified_members.json', JSON.stringify(members));
+}
+
+/**
+ * Get the roles that are given to verified members
+ * @returns A JSON array of role IDs
+ */
+export async function getVerifiedRoles() {
+    const storedRoles = await fs.readFile('verified_members_roles.json', 'utf8');
+    return JSON.parse(storedRoles);
+}
+
+/**
+ * Set the roles that are given to verified members
+ * @param {Array} roles A JSON array of role IDs
+ */
+export async function setVerifiedRoles(roles) {
+    await fs.writeFile('verified_members_roles.json', JSON.stringify(roles));
+}
+
+/**
+ * Add a role to a member
+ * @param {string} memberId The ID of the member to add the role to
+ * @param {string} guildId The ID of the guild
+ * @param {string} roleId The ID of the role to add
+ */
+export async function addRoleToMember(memberId, guildId, roleId) {
+    const response = await DiscordRequest(`guilds/${guildId}/members/${memberId}/roles/${roleId}`, {
+        method: 'PUT'
+    });
+    return response.json();
 }

@@ -150,6 +150,7 @@ const VERIFIED_MEMBERS_COMMAND = {
   type: 1,
   integration_types: [0],
   contexts: [0],
+  dm_permission: false, // Cannot be used in DMs
   options: [
     {
       name: "list",
@@ -179,6 +180,45 @@ const VERIFIED_MEMBERS_COMMAND = {
           description: "The member to remove from the verified list",
           type: 6, // 6 is USER type
           required: true
+        }
+      ]
+    },
+    {
+      name: "role",
+      description: "Change which role(s) are given to verified members",
+      type: 2, // 2 is SUB_COMMAND_GROUP
+      default_member_permissions: "8", // Requires Administrator permission (8)
+      options: [
+        {
+          name: "add",
+          description: "Add a role to be given to verified members",
+          type: 1, // 1 is SUB_COMMAND
+          options: [
+            {
+              name: "role",
+              description: "The role to add",
+              type: 8, // 8 is ROLE type
+              required: true
+            }
+          ]
+        },
+        {
+          name: "remove",
+          description: "Remove a role from being given to verified members",
+          type: 1, // 1 is SUB_COMMAND
+          options: [
+            {
+              name: "role",
+              description: "The role to remove",
+              type: 8, // 8 is ROLE type
+              required: true
+            }
+          ]
+        },
+        {
+          name: "list",
+          description: "List all roles that can be given to verified members",
+          type: 1 // 1 is SUB_COMMAND
         }
       ]
     }
