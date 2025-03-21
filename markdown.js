@@ -79,7 +79,35 @@ md.renderer.rules.list_item_close = (tokens, idx) => {
 
 // Process different types of links
 export const processLinks = (content) => {
-  // First handle raw URLs in angle brackets
+  // First handle markdown-style links with angle brackets [text](<url>)
+  content = content.replace(/\[([^\]]+)\]\(<([^>]+)>\)/g, (match, text, url) => {
+    // Template links
+    if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Template:/)) {
+      const templateName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Template:/, '').replace(/_/g, ' ');
+      return `[[Template:${templateName}|${text}]]`;
+    }
+
+    // Category links (need a : prefix to prevent categorization)
+    if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Category:/)) {
+      const categoryName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Category:/, '').replace(/_/g, ' ');
+      return `[[:Category:${categoryName}|${text}]]`;
+    }
+
+    // Interwiki links
+    if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\//)) {
+      const pageName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\//, '').replace(/_/g, ' ');
+      return `[[${pageName}|${text}]]`;
+    }
+
+    // External links
+    if (!url.startsWith('https://siivagunner.fandom.com/')) {
+      return `[${url} ${text}]`;
+    }
+
+    return match;
+  });
+
+  // Then handle raw URLs in angle brackets
   content = content.replace(/<(https:\/\/siivagunner\.fandom\.com\/wiki\/[^>]+)>/g, (match, url) => {
     // Template links
     if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Template:/)) {
@@ -97,35 +125,6 @@ export const processLinks = (content) => {
     if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\//)) {
       const pageName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\//, '').replace(/_/g, ' ');
       return `[[${pageName}]]`;
-    }
-
-    return match;
-  });
-
-  // Then handle markdown-style links with angle brackets [text](<url>)
-  content = content.replace(/\[([^\]]+)\]\(<([^>]+)>\)/g, (match, text, url) => {
-    // Template links
-    if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Template:/)) {
-      const templateName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Template:/, '').replace(/_/g, ' ');
-      return `[[Template:${templateName}|Template:${templateName}]]`;
-    }
-
-    // Category links (need a : prefix to prevent categorization)
-    if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Category:/)) {
-      const categoryName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\/Category:/, '').replace(/_/g, ' ');
-      const fullName = `Category:${categoryName}`;
-      return `[[:${fullName}|${fullName}]]`;
-    }
-
-    // Interwiki links
-    if (url.match(/^https:\/\/siivagunner\.fandom\.com\/wiki\//)) {
-      const pageName = url.replace(/^https:\/\/siivagunner\.fandom\.com\/wiki\//, '').replace(/_/g, ' ');
-      return `[[${pageName}|${pageName}]]`;
-    }
-
-    // External links
-    if (!url.startsWith('https://siivagunner.fandom.com/')) {
-      return `[${url} ${text}]`;
     }
 
     return match;
