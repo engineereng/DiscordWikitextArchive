@@ -147,10 +147,31 @@ describe('Discord to Wikitext Conversion', () => {
   });
 
   describe('Lists', () => {
-    test('Unordered list', () => {
+    test('Unordered list with dashes', () => {
       const input = '- Item 1\n- Item 2\n  - Subitem 2.1';
       expect(convertDiscordToWikitext(input, authors)).toBe(
         '\n* Item 1\n* Item 2\n** Subitem 2.1'
+      );
+    });
+
+    test('Unordered list with asterisks', () => {
+        const input = '* Item 1\n* Item 2\n  * Subitem 2.1';
+        expect(convertDiscordToWikitext(input, authors)).toBe(
+          '\n* Item 1\n* Item 2\n** Subitem 2.1'
+        );
+    });
+
+    test('Unordered list with indentations', () => {
+      const input = '- List of stuff\n  - and things\n  * and more things';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '\n* List of stuff\n** and things\n** and more things'
+      );
+    });
+
+    test('Unordered list with multiple levels of indentations', () => {
+      const input = '* First\n  * indent level 1\n  * indent level 1\n    * indent level 2\n    * indent level 2\n  * indent level 1\n* Second';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '\n* First\n** indent level 1\n** indent level 1\n*** indent level 2\n*** indent level 2\n** indent level 1\n* Second'
       );
     });
 
@@ -158,6 +179,13 @@ describe('Discord to Wikitext Conversion', () => {
       const input = '1. First\n2. Second\n  1. Subsecond';
       expect(convertDiscordToWikitext(input, authors)).toBe(
         '\n# First\n# Second\n## Subsecond'
+      );
+    });
+
+    test('Ordered list with multiple levels of indentations', () => {
+      const input = '1. First\n  1. Subfirst\n  2. Subsecond\n2. Second\n  1. Subfirst\n  2. Subsecond';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '\n# First\n## Subfirst\n## Subsecond\n# Second\n## Subfirst\n## Subsecond'
       );
     });
   });
@@ -176,6 +204,21 @@ describe('Discord to Wikitext Conversion', () => {
         '\n First line\n Second line'
       );
     });
+
+    test('Mix of multiline and single line quotes', () => {
+      const input = 'Not Quote\n> Quote\n> More quote\nNot quote\n> quote\nNot quote\n> Multiline quote line\n> Multiline quote line 2\nNot quote';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        'Not Quote\n Quote\n More quote\nNot quote\n quote\nNot quote\n Multiline quote line\n Multiline quote line 2\nNot quote'
+      );
+    });
+
+    test('Quote at beginning of message', () => {
+      const input = '> Quote at beginning\nNot quote';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '\n Quote at beginning\nNot quote'
+      );
+    });
+
   });
 
   describe('User Mentions', () => {
@@ -240,7 +283,7 @@ describe('Discord to Wikitext Conversion', () => {
       expect(formatMessageToWikitext(message, authors)).toBe(
         '*Fri, 21 Mar 2025 21:39:50 GMT: [[User:Ironwestie|Ironwestie]]: ' +
         "'''Hello''' [[User:Ironwestie|Ironwestie]]!\n\n" +
-        '# First item with a [[Katamari Day|Katamari Day]]\n' +
+        '# First item with a [[Katamari Day|link]]\n' +
         "# Second item with ''emphasis''\n\n" +
         ' A quote with <u>underline</u>'
       );
