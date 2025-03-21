@@ -99,3 +99,12 @@ export async function getAllowedRoles() {
 export async function setAllowedRoles(roles) {
     await fs.writeFile('allowed_roles.json', JSON.stringify(roles));
 }
+
+export async function getVerifiedMembers() {
+    const storedMembers = await fs.readFile('verified_members.json', 'utf8');
+    return JSON.parse(storedMembers);
+}
+
+export async function setVerifiedMembers(members) {
+    await fs.writeFile('verified_members.json', JSON.stringify(members));
+}

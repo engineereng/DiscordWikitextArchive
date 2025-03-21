@@ -144,6 +144,46 @@ const ALLOWED_ROLES_COMMAND = {
   ]
 }
 
-const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND, ALLOWED_CHANNELS_COMMAND, ALLOWED_ROLES_COMMAND];
+const VERIFIED_MEMBERS_COMMAND = {
+  name: "verified_members",
+  description: "Change which members have a wiki account",
+  type: 1,
+  integration_types: [0],
+  contexts: [0],
+  options: [
+    {
+      name: "list",
+      description: "List all members with a wiki account",
+      type: 1 // 1 is SUB_COMMAND
+    },
+    {
+      name: "add",
+      description: "Add a member to the verified list",
+      type: 1, // 1 is SUB_COMMAND
+      options: [
+        {
+          name: "member",
+          description: "The member to add to the verified list",
+          type: 6, // 6 is USER type
+          required: true
+        }
+      ]
+    },
+    {
+      name: "remove",
+      description: "Remove a member from the verified list",
+      type: 1, // 1 is SUB_COMMAND
+      options: [
+        {
+          name: "member",
+          description: "The member to remove from the verified list",
+          type: 6, // 6 is USER type
+          required: true
+        }
+      ]
+    }
+  ]
+}
+const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND, ALLOWED_CHANNELS_COMMAND, ALLOWED_ROLES_COMMAND, VERIFIED_MEMBERS_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
