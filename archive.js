@@ -4,7 +4,7 @@ import MarkdownIt from 'markdown-it';
 
 // Initialize markdown-it with custom rendering rules for MediaWiki format
 const md = new MarkdownIt({
-  html: true  // Enable HTML to support underline tags
+  html: true  // Enable HTML to support underline and small tags
 });
 
 // Customize rendering rules for MediaWiki format
@@ -13,11 +13,25 @@ md.renderer.rules.strong_close = () => "'''";
 md.renderer.rules.em_open = () => "''";
 md.renderer.rules.em_close = () => "''";
 md.renderer.rules.code_inline = (tokens, idx) => `<code>${tokens[idx].content}</code>`;
+md.renderer.rules.fence = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`;
+md.renderer.rules.code_block = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`;
+
+// Update link rendering to put URL first
 md.renderer.rules.link_open = (tokens, idx) => {
   const href = tokens[idx].attrs.find(attr => attr[0] === 'href')[1];
   return `[${href} `;
 };
 md.renderer.rules.link_close = () => "]";
+
+// Add custom token rule for link_text to skip it (we'll get it from content)
+md.renderer.rules.text = (tokens, idx) => {
+  // If this text token is inside a link, it's the display text
+  if (tokens[idx].level === 1 && tokens[idx-1]?.type === 'link_open') {
+    return tokens[idx].content;
+  }
+  // Otherwise render normally
+  return tokens[idx].content;
+};
 
 // Add custom processing for underline combinations
 const processUnderlineMarkdown = (content) => {
@@ -34,6 +48,12 @@ const processUnderlineMarkdown = (content) => {
   content = content.replace(/__(.*?)__/g, '<u>$1</u>');
 
   return content;
+};
+
+// Add custom processing for subtext
+const processSubtext = (content) => {
+  // Handle -# Subtext (convert to <small>Subtext</small>)
+  return content.replace(/^-#\s+(.+)$/gm, '<small>$1</small>');
 };
 
 /**
@@ -70,7 +90,11 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
 
       // Handle Discord-specific formatting before markdown conversion
       content = content
-        // Process underline combinations first
+        // Process subtext first
+        .replace(/^-#\s+(.+)$/gm, match => {
+          return processSubtext(match);
+        })
+        // Process underline combinations
         .replace(/__([\*]{3}.*?[\*]{3})__|__([\*]{2}.*?[\*]{2})__|__([\*].*?[\*])__|__(.*?)__/g, match => {
           // Pre-process the underline combinations
           return processUnderlineMarkdown(match);
