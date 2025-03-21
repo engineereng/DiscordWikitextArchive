@@ -110,19 +110,28 @@ export async function setAllowedRoles(roles) {
 
 /**
  * Get the members that are verified
- * @returns A JSON array of member IDs
+ * @returns An array of objects containing member IDs and wiki accounts
  */
 export async function getVerifiedMembers() {
-    const storedMembers = await fs.readFile('verified_members.json', 'utf8');
-    return JSON.parse(storedMembers);
+    try {
+        const storedMembers = await fs.readFile('verified_members.json', 'utf8');
+        const members = JSON.parse(storedMembers);
+        // Handle legacy format (array of IDs) by converting to new format
+        if (members.length > 0 && typeof members[0] === 'string') {
+            return members.map(id => ({ memberId: id, wikiAccount: 'Unknown (Legacy)' }));
+        }
+        return members;
+    } catch (err) {
+        return [];
+    }
 }
 
 /**
  * Set the members that are verified
- * @param {Array} members A JSON array of member IDs
+ * @param {Array} members An array of objects containing member IDs and wiki accounts
  */
 export async function setVerifiedMembers(members) {
-    await fs.writeFile('verified_members.json', JSON.stringify(members));
+    await fs.writeFile('verified_members.json', JSON.stringify(members, null, 2));
 }
 
 /**
@@ -149,7 +158,7 @@ export async function setVerifiedRoles(roles) {
  * @param {string} roleId The ID of the role to add
  */
 export async function addRoleToMember(memberId, guildId, roleId) {
-    if (!memberId) throw new Error('memberId is required');
+  if (!memberId) throw new Error('memberId is required');
     if (!guildId) throw new Error('guildId is required');
     if (!roleId) throw new Error('roleId is required');
 
@@ -163,6 +172,27 @@ export async function addRoleToMember(memberId, guildId, roleId) {
         return response;
     } catch (error) {
         console.error('Error adding role:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get information about a guild member
+ * @param {string} guildId The ID of the guild
+ * @param {string} memberId The ID of the member
+ * @returns {Promise<Object>} The member object from Discord's API
+ */
+export async function getMemberInfo(guildId, memberId) {
+    if (!guildId) throw new Error('guildId is required');
+    if (!memberId) throw new Error('memberId is required');
+
+    try {
+        const response = await DiscordRequest(`guilds/${guildId}/members/${memberId}`, {
+            method: 'GET'
+        });
+        return response.json();
+    } catch (error) {
+        console.error('Error getting member info:', error);
         throw error;
     }
 }

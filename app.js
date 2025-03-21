@@ -18,7 +18,8 @@ import {
   setVerifiedMembers,
   getVerifiedRoles,
   setVerifiedRoles,
-  addRoleToMember
+  addRoleToMember,
+  getMemberInfo
 } from './archive.js';
 
 // Create an express app
@@ -418,40 +419,55 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         if (members.length === 0) {
           message = "No members have a wiki account.";
         } else {
-          const membersList = members.map(member => `<@${member}>`).join('\n');
-          message = "Members with a wiki account:\n" + membersList;
+          const membersList = members.map(member =>
+            `<@${member.memberId}> (${member.displayName}) - Wiki Account: ${member.wikiAccount}`
+          ).join('\n');
+          message = "Members with wiki accounts:\n" + membersList;
         }
       } else if (subcommand === 'add') {
-        // /verified_members add <member_id>
+        // /verified_members add <member_id> <wiki_account>
         const memberId = options[0].options[0].value;
+        const wikiAccount = options[0].options[1].value;
 
-        if (allowedMembers.includes(memberId)) {
-          message = `Member <@${memberId}> is already in the verified members list`;
+        const existingMember = allowedMembers.find(m => m.memberId === memberId);
+        if (existingMember) {
+          message = `Member <@${memberId}> (${existingMember.displayName}) is already in the verified members list with wiki account "${existingMember.wikiAccount}"`;
         } else {
-          allowedMembers.push(memberId);
-          // Add roles to member
-          const verifiedRoles = await getVerifiedRoles();
-          // For now, only one role is given to verified members
-          const roleId = verifiedRoles[0];
-          if (roleId) {
-            try {
-              await addRoleToMember(memberId, guild_id, roleId);
-              message = `Member <@${memberId}> added to verified members list and role <@&${roleId}>`;
-            } catch (error) {
-              console.error('Error adding role:', error);
-              message = `Member <@${memberId}> added to verified members list but there was an error adding the role: ${error.message}`;
+          try {
+            // Get member's display name from Discord
+            const memberInfo = await getMemberInfo(guild_id, memberId);
+            const displayName = memberInfo.nick || memberInfo.user.username;
+
+            allowedMembers.push({ memberId, wikiAccount, displayName });
+            // Add roles to member
+            const verifiedRoles = await getVerifiedRoles();
+            // For now, only one role is given to verified members
+            const roleId = verifiedRoles[0];
+            if (roleId) {
+              try {
+                await addRoleToMember(memberId, guild_id, roleId);
+                message = `Member <@${memberId}> (${displayName}) added to verified members list with wiki account "${wikiAccount}" and role <@&${roleId}>`;
+              } catch (error) {
+                console.error('Error adding role:', error);
+                message = `Member <@${memberId}> (${displayName}) added to verified members list with wiki account "${wikiAccount}" but there was an error adding the role: ${error.message}`;
+              }
+            } else {
+              message = `Member <@${memberId}> (${displayName}) added to verified members list with wiki account "${wikiAccount}" but no role was given to them`;
             }
-          } else {
-            message = `Member <@${memberId}> added to verified members list but no role was given to them`;
+          } catch (error) {
+            console.error('Error getting member info:', error);
+            message = `Error getting member information: ${error.message}`;
           }
         }
       } else if (subcommand === 'remove') {
         // /verified_members remove <member_id>
         const memberId = options[0].options[0].value;
 
-        if (allowedMembers.includes(memberId)) {
-          allowedMembers.splice(allowedMembers.indexOf(memberId), 1);
-          message = `Member <@${memberId}> removed from verified members list`;
+        const memberIndex = allowedMembers.findIndex(m => m.memberId === memberId);
+        if (memberIndex !== -1) {
+          const member = allowedMembers[memberIndex];
+          allowedMembers.splice(memberIndex, 1);
+          message = `Member <@${memberId}> (${member.displayName}) removed from verified members list`;
         } else {
           message = `Member <@${memberId}> is not in the verified members list`;
         }

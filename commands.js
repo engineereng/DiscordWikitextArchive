@@ -167,6 +167,12 @@ const VERIFIED_MEMBERS_COMMAND = {
           description: "The member to add to the verified list",
           type: 6, // 6 is USER type
           required: true
+        },
+        {
+          name: "wiki_account",
+          description: "The member's wiki account (display name or URL to Fandom wiki page)",
+          type: 3, // 3 is STRING type
+          required: true
         }
       ]
     },
