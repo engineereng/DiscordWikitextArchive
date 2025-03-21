@@ -91,3 +91,12 @@ export async function getAllowedChannels() {
 export async function setAllowedChannels(channels) {
     await fs.writeFile('allowed_channels.json', JSON.stringify(channels));
 }
+
+export async function getAllowedRoles() {
+    const storedRoles = await fs.readFile('allowed_roles.json', 'utf8');
+    return JSON.parse(storedRoles);
+  }
+
+export async function setAllowedRoles(roles) {
+    await fs.writeFile('allowed_roles.json', JSON.stringify(roles));
+}

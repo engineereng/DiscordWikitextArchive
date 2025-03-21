@@ -35,8 +35,8 @@ const ARCHIVE_COMMAND = {
   contexts: [0]
 };
 
-const CONFIG_ALLOWED_CHANNELS_COMMAND = {
-  name: "config_allowed_channels",
+const ALLOWED_CHANNELS_COMMAND = {
+  name: "allowed_channels",
   description: "Change which channels can have their threads archived",
   type: 1,
   integration_types: [0],
@@ -80,8 +80,8 @@ const CONFIG_ALLOWED_CHANNELS_COMMAND = {
   ]
 }
 
-const CONFIG_ALLOWED_ROLES_COMMAND = {
-  name: "config_allowed_roles",
+const ALLOWED_ROLES_COMMAND = {
+  name: "allowed_roles",
   description: "Change which roles can archive channels",
   type: 1,
   integration_types: [0],
@@ -123,6 +123,6 @@ const CONFIG_ALLOWED_ROLES_COMMAND = {
   ]
 }
 
-const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND, CONFIG_ALLOWED_CHANNELS_COMMAND, CONFIG_ALLOWED_ROLES_COMMAND];
+const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND, ALLOWED_CHANNELS_COMMAND, ALLOWED_ROLES_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

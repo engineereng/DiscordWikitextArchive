@@ -4,13 +4,10 @@ import {
   InteractionType,
   InteractionResponseType,
   InteractionResponseFlags,
-  MessageComponentTypes,
-  ButtonStyleTypes,
   verifyKeyMiddleware,
 } from 'discord-interactions';
-import { getRandomEmoji, DiscordRequest } from './utils.js';
-import { promises as fs } from 'fs';
-import { formatMessageToWikitext, readDiscordThread, getAllowedChannels, setAllowedChannels } from './archive.js';
+import { getRandomEmoji } from './utils.js';
+import { formatMessageToWikitext, readDiscordThread, getAllowedChannels, setAllowedChannels, getAllowedRoles, setAllowedRoles } from './archive.js';
 
 // Create an express app
 const app = express();
@@ -24,15 +21,6 @@ const PORT = process.env.PORT || 3000;
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
   // Interaction type and data
   const { type, data, channel } = req.body;
-
-  const getAllowedRoles = async () => {
-    const storedRoles = await fs.readFile('allowed_roles.json', 'utf8');
-    return JSON.parse(storedRoles);
-  }
-
-  const setAllowedRoles = async (roles) => {
-    await fs.writeFile('allowed_roles.json', JSON.stringify(roles));
-  }
 
   /**
    * Handle verification requests
@@ -118,7 +106,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
     }
 
-    if (name === 'config_allowed_channels') {
+    if (name === 'allowed_channels') {
       // Check if we have options
       if (!options || !options[0]) {
         return res.send({
@@ -180,7 +168,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
     }
 
-    if (name === 'config_allowed_roles') {
+    if (name === 'allowed_roles') {
       // Check if we have options
       if (!options || !options[0]) {
         return res.send({
