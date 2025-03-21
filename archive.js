@@ -200,6 +200,15 @@ md.block.ruler.before('list', 'custom_list', (state) => {
   return false;
 });
 
+// Add custom processing for headings
+const processHeadings = (content) => {
+  return content.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, text) => {
+    // Add 1 to header level since Discord's # is h2 (h1 is reserved for page titles)
+    const level = Math.min(6, hashes.length + 1);
+    return `<h${level}>${text}</h${level}>`;
+  });
+};
+
 /**
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
@@ -222,7 +231,17 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
       const startsWithList = content.match(/^([-*]|\d+\.)\s+/);
       const containsList = content.match(/(?:^|\n)(?:[-*]|\d+\.)\s+/);
 
-      // Process lists first, before any markdown processing
+      // Process headings first (but skip lines that look like ordered lists)
+      content = content.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, text) => {
+        // Skip if this looks like an ordered list (has a number before the period)
+        if (text.match(/^\d+\./)) {
+          return match;
+        }
+        return processHeadings(match);
+      });
+      console.log("Content after heading processing:", content);
+
+      // Process lists next, before any markdown processing
       content = content.replace(/(?:^|\n)(?:[-*]|\d+\.)\s+.*(?:\n(?:\s*[-*]|\s*\d+\.)\s+.*)*$/g, match => {
         // Skip if this looks like a timestamp line
         if (match.match(/^\*[A-Za-z]+,\s+\d+\s+[A-Za-z]+\s+\d{4}/)) {
