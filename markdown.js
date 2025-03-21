@@ -293,6 +293,22 @@ export const processQuotes = (content) => {
   return content.replace(/^>\s*(.+)$/gm, ' $1');
 };
 
+export const processVotingEmojis = (content) => {
+  const votingEmojis = {
+    support: 'Voting-support.svg',
+    neutral: 'Voting-neutral.svg',
+    oppose: 'Voting-oppose.svg',
+    restructure: 'Voting-restructure.svg'
+  };
+
+  return content.replace(/:([a-z]+):/g, (match, emojiName) => {
+    if (votingEmojis[emojiName]) {
+      return `[[File:${votingEmojis[emojiName]}|20px|link=]]`;
+    }
+    return match;
+  });
+};
+
 export const processTemplates = (content) => {
   // Match both anonymous and named parameter templates
   return content.replace(/{{([^{}|]+)(\|[^{}]+)?}}/g, (match, templateName, parameters) => {
@@ -355,6 +371,9 @@ export const convertDiscordToWikitext = (content, authors = []) => {
     .replace(/<#(\d+)>/g, '#$1')
     .replace(/<@&(\d+)>/g, '@$1')
     .replace(/<:([^:]+):(\d+)>/g, ':$1:');
+
+  // Process voting emojis
+  content = processVotingEmojis(content);
 
   // Split content into lines for processing
   let lines = content.split('\n');
