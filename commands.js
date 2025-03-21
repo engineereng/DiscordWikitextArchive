@@ -40,7 +40,8 @@ const CONFIG_ALLOWED_CHANNELS_COMMAND = {
   description: "Change which channels can be archived",
   type: 1,
   integration_types: [0],
-  contexts: [0]
+  contexts: [0],
+  default_member_permissions: "8" // Requires Administrator permission (8)
 }
 
 const CONFIG_ALLOWED_ROLES_COMMAND = {
@@ -49,6 +50,7 @@ const CONFIG_ALLOWED_ROLES_COMMAND = {
   type: 1,
   integration_types: [0],
   contexts: [0],
+  default_member_permissions: "8", // Requires Administrator permission (8)
   options: [
     {
       name: "list",
