@@ -1,33 +1,31 @@
 import { DiscordRequest } from './utils.js';
 import { promises as fs } from 'fs';
+import {
+  convertDiscordToWikitext
+} from './markdown.js';
+
 /**
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
+   * @param {Array} authors The array of verified members
    * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
    * @returns A string of the message formatted as wikitext
    */
-export function formatMessageToWikitext (message, simpleDate = false) {
-    // Wanted format:
-    // *21:56: [[User:Ironwestie|Ironwestie]]: Hello all.
-    // *21:56: [[User:Brunocoolgamers|Brunocoolgamers]]: hii
-    // *21:56: [[User:Pokemonfreak777|Pokemonfreak777]]: hello
+export function formatMessageToWikitext (message, authors, simpleDate = false) {
     const parts = [];
-    // Add timestamp and author
     const timestamp = new Date(message.timestamp).toUTCString();
-    // timestamp is in format: Fri, 21 Mar 2025 21:56:00 GMT
-    // we want to format it to: 21:56
     const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
+    const authorWikiAccount = authors.find(author => author.memberId === message.author.id)?.wikiAccount ?? message.author.username;
+    const authorLink = `[[User:${authorWikiAccount}|${authorWikiAccount}]]`;
 
-    // TODO map the author to a wikitext link based on the username
-    parts.push(`*${timestampFormatted}: ${message.author.username}:`);
+    parts.push(`*${timestampFormatted}: ${authorLink}:`);
 
-    // Add text content if it exists
     if (message.content) {
-      // TODO format content based on the content (see moot_compact.py)
-      parts.push(message.content);
+      const wikitextContent = convertDiscordToWikitext(message.content, authors);
+      parts.push(wikitextContent);
     }
 
-    // Add embed content if it exists
+    // Add embed and attachment content
     if (message.embeds?.length > 0) {
       message.embeds.forEach(embed => {
         if (embed.title) parts.push(`[Embed Title] ${embed.title}`);
@@ -36,7 +34,6 @@ export function formatMessageToWikitext (message, simpleDate = false) {
       });
     }
 
-    // Add attachment URLs if they exist
     if (message.attachments?.length > 0) {
       message.attachments.forEach(attachment => {
         parts.push(`[Attachment] ${attachment.url}`);

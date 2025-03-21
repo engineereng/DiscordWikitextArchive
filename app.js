@@ -164,12 +164,13 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
         // Archive the thread
         const messages = await readDiscordThread(threadId);
+        const authors = await getVerifiedMembers();
         // Filter out bot messages and reverse the order
         const messagesReversed = messages
           .filter(message => !message.author.bot) // Remove bot messages
           .reverse();
         const fileContent = messagesReversed.map(message => {
-          return formatMessageToWikitext(message);
+          return formatMessageToWikitext(message, authors);
         }).join('\n\n');
 
         // Create a buffer from the content
