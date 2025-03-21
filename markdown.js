@@ -278,9 +278,14 @@ export const processLists = (content) => {
 
 export const processHeadings = (content) => {
   return content.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, text) => {
+    // For headers with 4 or more hashes, keep original format but add newlines
+    if (hashes.length >= 4) {
+      return '\n\n' + match;
+    }
     // Add 1 to header level since Discord's # is h2 (h1 is reserved for page titles)
     const level = Math.min(6, hashes.length + 1);
-    return `<h${level}>${text}</h${level}>`;
+    // Add newlines before header and spaces around text
+    return `\n\n<h${level}> ${text} </h${level}>`;
   });
 };
 
@@ -335,6 +340,9 @@ export const convertDiscordToWikitext = (content, authors = []) => {
   // First process templates and links
   content = processTemplates(content);
   content = processLinks(content);
+
+  // Process headers
+  content = processHeadings(content);
 
   // Process Discord-specific formatting
   content = content
