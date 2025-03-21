@@ -7,8 +7,8 @@ const md = new MarkdownIt({
   html: true  // Enable HTML to support underline and small tags
 });
 
-// Disable markdown-it's list and heading processing
-md.disable(['list', 'heading']);
+// Disable markdown-it's list, heading, and quote processing
+md.disable(['list', 'heading', 'blockquote']);
 
 // Customize rendering rules for MediaWiki format
 md.renderer.rules.strong_open = () => "'''";
@@ -209,6 +209,11 @@ const processHeadings = (content) => {
   });
 };
 
+// Add custom processing for quotes
+const processQuotes = (content) => {
+  return content.replace(/^>\s*(.+)$/gm, ' $1');
+};
+
 /**
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
@@ -230,8 +235,13 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
       console.log("Original content:", content);
       const startsWithList = content.match(/^([-*]|\d+\.)\s+/);
       const containsList = content.match(/(?:^|\n)(?:[-*]|\d+\.)\s+/);
+      const containsQuotes = content.match(/^>\s+/m);
 
-      // Process headings first (but skip lines that look like ordered lists)
+      // Process quotes first
+      content = processQuotes(content);
+      console.log("Content after quote processing:", content);
+
+      // Process headings next (but skip lines that look like ordered lists)
       content = content.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, text) => {
         // Skip if this looks like an ordered list (has a number before the period)
         if (text.match(/^\d+\./)) {
@@ -267,9 +277,9 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
         .replace(/<:([^:]+):(\d+)>/g, ':$1:');
       console.log("Content after Discord formatting:", content);
 
-      // Only use markdown-it if there are no lists
+      // Only use markdown-it if there are no lists or quotes
       let wikitextContent;
-      if (!containsList) {
+      if (!containsList && !containsQuotes) {
         wikitextContent = md.render(content)
           .replace(/<\/?p>/g, '')
           .replace(/\n$/, '');
@@ -290,6 +300,15 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
         wikitextContent = lines.join('\n');
       }
       console.log("Final wikitext content:", wikitextContent);
+
+      // Ensure quotes have proper spacing
+      wikitextContent = wikitextContent.split('\n').map(line => {
+        if (line.startsWith(' ')) {
+          // Preserve exactly one space at the start for quotes
+          return ' ' + line.trimLeft();
+        }
+        return line;
+      }).join('\n');
 
       parts.push(startsWithList ? '\n' + wikitextContent : wikitextContent);
     }
