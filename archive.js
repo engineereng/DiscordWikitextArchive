@@ -1,16 +1,7 @@
 import { DiscordRequest } from './utils.js';
 import { promises as fs } from 'fs';
 import {
-  contentStartsWith,
-  contentContains,
-  processQuotes,
-  processHeadings,
-  processLists,
-  processTemplates,
-  processSubtext,
-  processUnderlineMarkdown,
-  processLinks,
-  renderContent,
+  convertDiscordToWikitext
 } from './markdown.js';
 
 /**
@@ -30,88 +21,8 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
     parts.push(`*${timestampFormatted}: ${authorLink}:`);
 
     if (message.content) {
-      let content = message.content;
-      console.log("Original content:", content);
-      const startsWithList = contentStartsWith.list(content);
-      const startsWithQuote = contentStartsWith.quote(content);
-      const containsList = contentContains.list(content);
-      const containsQuotes = contentContains.quote(content);
-
-      // Process quotes first
-      content = processQuotes(content);
-      console.log("Content after quote processing:", content);
-
-      // Process headings next (but skip lines that look like ordered lists)
-      content = content.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, text) => {
-        // Skip if this looks like an ordered list (has a number before the period)
-        if (text.match(/^\d+\./)) {
-          return match;
-        }
-        return processHeadings(match);
-      });
-      console.log("Content after heading processing:", content);
-
-      // Process lists next, before any markdown processing
-      content = content.replace(/(?:^|\n)(?:[-*]|\d+\.)\s+.*(?:\n(?:\s*[-*]|\s*\d+\.)\s+.*)*$/g, match => {
-        // Skip if this looks like a timestamp line
-        if (match.match(/^\*[A-Za-z]+,\s+\d+\s+[A-Za-z]+\s+\d{4}/)) {
-          return match;
-        }
-        console.log("Processing list block:", match);
-        const processed = processLists(match);
-        console.log("Processed list block:", processed);
-        return processed;
-      });
-      console.log("Content after list processing:", content);
-
-      // Process templates before other Discord-specific formatting
-      content = processTemplates(content);
-      console.log("Content after template processing:", content);
-
-      // Process links before markdown rendering
-      content = processLinks(content);
-      console.log("Content after link processing:", content);
-
-      // Then process other Discord-specific formatting
-      content = content
-        .replace(/^-#\s+(.+)$/gm, match => processSubtext(match))
-        .replace(/__([\*]{3}.*?[\*]{3})__|__([\*]{2}.*?[\*]{2})__|__([\*].*?[\*])__|__(.*?)__/g, match => processUnderlineMarkdown(match))
-        .replace(/<@!?(\d+)>/g, (match, id) => {
-          const member = authors.find(m => m.memberId === id);
-          return member ? `[[User:${member.wikiAccount}|${member.displayName}]]` : match;
-        })
-        .replace(/<#(\d+)>/g, '#$1')
-        .replace(/<@&(\d+)>/g, '@$1')
-        .replace(/<:([^:]+):(\d+)>/g, ':$1:');
-      console.log("Content after Discord formatting:", content);
-
-      // Render markdown content
-      let wikitextContent = renderContent(content, { containsList, containsQuotes });
-      console.log("Content after markdown rendering:", wikitextContent);
-
-      // Process any remaining list items that weren't caught in a block
-      if (startsWithList && !content.match(/^\*[A-Za-z]+,\s+\d+\s+[A-Za-z]+\s+\d{4}/)) {
-        const lines = wikitextContent.split('\n');
-        const firstLine = lines[0];
-        if (firstLine.match(/^[-*]\s+/)) {
-          lines[0] = '* ' + firstLine.replace(/^[-*]\s+/, '');
-        } else if (firstLine.match(/^\d+\.\s+/)) {
-          lines[0] = '# ' + firstLine.replace(/^\d+\.\s+/, '');
-        }
-        wikitextContent = lines.join('\n');
-      }
-      console.log("Final wikitext content:", wikitextContent);
-
-      // Ensure quotes have proper spacing
-      wikitextContent = wikitextContent.split('\n').map(line => {
-        if (line.startsWith(' ')) {
-          // Preserve exactly one space at the start for quotes
-          return ' ' + line.trimLeft();
-        }
-        return line;
-      }).join('\n');
-
-      parts.push(startsWithList || startsWithQuote ? '\n' + wikitextContent : wikitextContent);
+      const wikitextContent = convertDiscordToWikitext(message.content, authors);
+      parts.push(wikitextContent);
     }
 
     // Add embed and attachment content
@@ -129,9 +40,7 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
       });
     }
 
-    const result = parts.join(' ');
-    console.log("Final output:", result);
-    return result;
+    return parts.join(' ');
   }
 
 /**

@@ -256,9 +256,9 @@ export const processLists = (content) => {
 
       // Count indentation level (Discord uses 2 spaces)
       const indentLevel = Math.floor(indent.length / 2);
-      console.log("Line:", line);
-      console.log("Indent length:", indent.length);
-      console.log("Indent level:", indentLevel);
+    //   console.log("Line:", line);
+    //   console.log("Indent length:", indent.length);
+    //   console.log("Indent level:", indentLevel);
 
       // Store the first indent level we see
       if (firstIndentLevel === null) {
@@ -279,7 +279,7 @@ export const processLists = (content) => {
 
       // Add the processed line
       const processedLine = marker + ' ' + content;
-      console.log("Processed line:", processedLine);
+    //   console.log("Processed line:", processedLine);
       processedLines.push(processedLine);
     } else {
       inList = false;
@@ -334,6 +334,84 @@ export const renderContent = (content, { containsList, containsQuotes } = {}) =>
       .replace(/\n$/, '');
   }
   return content;
+};
+
+/**
+ * Convert Discord-formatted text to wikitext
+ * @param {string} content The Discord-formatted text to convert
+ * @param {Array} authors Array of verified members for @mention conversion
+ * @returns {string} The converted wikitext
+ */
+export const convertDiscordToWikitext = (content, authors = []) => {
+  const startsWithList = contentStartsWith.list(content);
+  const startsWithQuote = contentStartsWith.quote(content);
+  const containsList = contentContains.list(content);
+  const containsQuotes = contentContains.quote(content);
+
+  // Process quotes first
+  content = processQuotes(content);
+
+  // Process headings next (but skip lines that look like ordered lists)
+  content = content.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, text) => {
+    // Skip if this looks like an ordered list (has a number before the period)
+    if (text.match(/^\d+\./)) {
+      return match;
+    }
+    return processHeadings(match);
+  });
+
+  // Process lists next, before any markdown processing
+  content = content.replace(/(?:^|\n)(?:[-*]|\d+\.)\s+.*(?:\n(?:\s*[-*]|\s*\d+\.)\s+.*)*$/g, match => {
+    // Skip if this looks like a timestamp line
+    if (match.match(/^\*[A-Za-z]+,\s+\d+\s+[A-Za-z]+\s+\d{4}/)) {
+      return match;
+    }
+    return processLists(match);
+  });
+
+  // Process templates before other Discord-specific formatting
+  content = processTemplates(content);
+
+  // Process links before markdown rendering
+  content = processLinks(content);
+
+  // Then process other Discord-specific formatting
+  content = content
+    .replace(/^-#\s+(.+)$/gm, match => processSubtext(match))
+    .replace(/__([\*]{3}.*?[\*]{3})__|__([\*]{2}.*?[\*]{2})__|__([\*].*?[\*])__|__(.*?)__/g, match => processUnderlineMarkdown(match))
+    .replace(/<@!?(\d+)>/g, (match, id) => {
+      const member = authors.find(m => m.memberId === id);
+      return member ? `[[User:${member.wikiAccount}|${member.displayName}]]` : match;
+    })
+    .replace(/<#(\d+)>/g, '#$1')
+    .replace(/<@&(\d+)>/g, '@$1')
+    .replace(/<:([^:]+):(\d+)>/g, ':$1:');
+
+  // Render markdown content
+  let wikitextContent = renderContent(content, { containsList, containsQuotes });
+
+  // Process any remaining list items that weren't caught in a block
+  if (startsWithList && !content.match(/^\*[A-Za-z]+,\s+\d+\s+[A-Za-z]+\s+\d{4}/)) {
+    const lines = wikitextContent.split('\n');
+    const firstLine = lines[0];
+    if (firstLine.match(/^[-*]\s+/)) {
+      lines[0] = '* ' + firstLine.replace(/^[-*]\s+/, '');
+    } else if (firstLine.match(/^\d+\.\s+/)) {
+      lines[0] = '# ' + firstLine.replace(/^\d+\.\s+/, '');
+    }
+    wikitextContent = lines.join('\n');
+  }
+
+  // Ensure quotes have proper spacing
+  wikitextContent = wikitextContent.split('\n').map(line => {
+    if (line.startsWith(' ')) {
+      // Preserve exactly one space at the start for quotes
+      return ' ' + line.trimLeft();
+    }
+    return line;
+  }).join('\n');
+
+  return startsWithList || startsWithQuote ? '\n' + wikitextContent : wikitextContent;
 };
 
 // Export markdown-it instance if needed elsewhere
