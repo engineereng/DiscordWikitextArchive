@@ -19,8 +19,7 @@
     "discord-interactions": "^4.0.0",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "markdown-it": "^14.1.0",
-    "wikitext-js": "^0.2.9"
+    "markdown-it": "^14.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
