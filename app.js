@@ -150,6 +150,18 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         }
       } else {
         const roleId = options[0].options[0].value;
+
+        // Reject @everyone role (which has the same ID as the guild/server ID)
+        if (roleId === req.body.guild_id) {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL,
+              content: "The @everyone role cannot be added to or removed from the allowed roles list.",
+            }
+          });
+        }
+
         const roleName = `<@&${roleId}>`; // Format as a role mention
 
         if (subcommand === 'add') {
