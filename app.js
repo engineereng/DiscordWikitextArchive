@@ -49,7 +49,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     if (name === 'archive') {
-      const {type, id: channelId, parent_id} = channel;
+      const {type, id: channelId} = channel;
 
       // Get and verify user permissions first
       const allowedRoles = await getAllowedRoles();
@@ -76,7 +76,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
               flags: InteractionResponseFlags.EPHEMERAL,
-              content: "The '/archive this' command can only be used inside a thread.",
+              content: "The '/archive this' command can only be used inside a public thread.",
             }
           });
         }
