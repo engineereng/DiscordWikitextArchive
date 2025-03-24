@@ -11,11 +11,17 @@ import {
    * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
    * @returns A string of the message formatted as wikitext
    */
-export function formatMessageToWikitext (message, authors, simpleDate = false) {
+export function formatMessageToWikitext (message, authors, simpleDate = true) {
     const parts = [];
     const timestamp = new Date(message.timestamp).toUTCString();
     const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
-    const authorWikiAccount = authors.find(author => author.memberId === message.author.id)?.wikiAccount ?? message.author.username;
+    let authorWikiAccount = authors.find(author => author.memberId === message.author.id)
+    if (!authorWikiAccount) {
+        console.log(`Couldn't find message author: ${message.author.username}`);
+        authorWikiAccount = message.author.username;
+    } else {
+        authorWikiAccount = authorWikiAccount.wikiAccount;
+    }
     const authorLink = `[[User:${authorWikiAccount}|${authorWikiAccount}]]`;
 
     parts.push(`*${timestampFormatted}: ${authorLink}:`);
