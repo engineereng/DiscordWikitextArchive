@@ -48,35 +48,49 @@ export function formatMessageToWikitext (message, authors, simpleDate = false) {
  * @param {*} threadId The ID of the thread to read
  * @returns A JSON array of messages from the thread
  */
-export async function readDiscordThread (threadId) {
-    const response = await DiscordRequest(`channels/${threadId}/messages?limit=100`, {
-        method: 'GET'
-    });
-    const messages = await response.json();
-    // Log more details about each message
-    // messages.forEach(message => {
-    //   console.log('Message:', {
-    //     type: message.type,
-    //     content: message.content,
-    //     hasEmbeds: message.embeds?.length > 0,
-    //     hasAttachments: message.attachments?.length > 0,
-    //     timestamp: message.timestamp,
-    //     author: message.author.username,
-    //     message_reference: message.message_reference,
-    //     components: message.components,
-    //     flags: message.flags,
-    //     raw: message,
-    //     mentions: message.mentions,
-    //     mention_roles: message.mention_roles,
-    //     pinned: message.pinned,
-    //     mention_everyone: message.mention_everyone,
-    //     tts: message.tts,
-    //     position: message.position,
-    //     referenced_message: message.referenced_message
-    //   });
-    // });
+export async function readDiscordThread(threadId) {
+    let allMessages = [];
+    let lastMessageId = null;
+    const limit = 100; // Discord's maximum limit per request
+    let page = 1;
 
-    return messages;
+    while (true) {
+        // Build the URL with pagination parameters
+        let url = `channels/${threadId}/messages?limit=${limit}`;
+        if (lastMessageId) {
+            url += `&before=${lastMessageId}`;
+        }
+
+        // Fetch messages for this page
+        const response = await DiscordRequest(url, {
+            method: 'GET'
+        });
+        const messages = await response.json();
+
+        // If no messages returned, we've reached the end
+        if (messages.length === 0) {
+            console.log(`Finished fetching messages. Total messages: ${allMessages.length}`);
+            break;
+        }
+
+        // Add messages to our collection
+        allMessages = allMessages.concat(messages);
+
+        // Show progress
+        console.log(`Fetched page ${page}: ${messages.length} messages (Total: ${allMessages.length})`);
+
+        // If we got less than the limit, we've reached the end
+        if (messages.length < limit) {
+            console.log(`Finished fetching messages. Total messages: ${allMessages.length}`);
+            break;
+        }
+
+        // Get the ID of the last message for the next page
+        lastMessageId = messages[messages.length - 1].id;
+        page++;
+    }
+
+    return allMessages;
 }
 
 export async function getAllowedChannels() {
