@@ -400,6 +400,10 @@ export const convertDiscordToWikitext = (content, authors = []) => {
       // If next line is not a quote, process the block
       if (!isNextQuote) {
         const renderedContent = quoteBlock.map(quote => {
+          // Don't process markdown for list items in quotes
+          if (quote.trim().startsWith('* ')) {
+            return quote.trim();
+          }
           return md.render(quote)
             .replace(/<\/?p>/g, '')
             .replace(/\n$/, '');

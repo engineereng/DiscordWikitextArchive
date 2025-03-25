@@ -219,6 +219,13 @@ describe('Discord to Wikitext Conversion', () => {
       );
     });
 
+    test('Quote with list', () => {
+      const input = '> Quote\n> * Item 1 - some content \n> * Item 2 - some content';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '<poem><pre>Quote\n* Item 1 - some content\n* Item 2 - some content</pre></poem>'
+      );
+    });
+
   });
 
   describe('User Mentions', () => {
