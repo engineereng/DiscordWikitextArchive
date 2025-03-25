@@ -32,7 +32,7 @@ export function formatMessageToWikitext (message, authors, reply = false, forwar
       parts.push(`t2=${timestampFormatted}`);
     } else {
         if (reply) { // replies have the class ping-reply
-            parts.push('class=ping-reply');
+            parts.push('class=ping reply');
         }
         parts.push(`t=${timestampFormatted}`);
     }
@@ -74,9 +74,10 @@ export function formatMessageToWikitext (message, authors, reply = false, forwar
       });
     }
 
-    if (embeds.length > 0) {
-        parts.push(`${embeds.join('\n')}`);
-    }
+    // do not render embeds for now
+    // if (embeds.length > 0) {
+    //     parts.push(`${embeds.join('\n')}`);
+    // }
 
     return parts.join('|') + "}}";
   }
