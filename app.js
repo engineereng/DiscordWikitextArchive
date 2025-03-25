@@ -170,38 +170,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           .filter(message => !message.author.bot) // Remove bot messages
           .reverse();
         const fileContent = `<templatestyles src="Template:DiscordLog/styles.css"/>\n` + messagesReversed.map(message => {
-          const isReply = message.type === 19;
-          const isForwarded = message.message_reference?.type === 1;
-
-          if (isReply) {
-            // Handle reply message
-            const referencedMessage = message.referenced_message;
-            if (referencedMessage) {
-              if (referencedMessage.message_snapshots && referencedMessage.message_snapshots.length > 0) {
-                // Handle a reply to a forwarded message
-                console.log("REFERENCED MESSAGE:", referencedMessage);
-                const messageSnapshot = referencedMessage.message_snapshots[0].message;
-                messageSnapshot.author = referencedMessage.author;
-                return formatMessageToWikitext(messageSnapshot, authors, true, true) + "\n\n" +
-                       formatMessageToWikitext(message, authors);
-              } else {
-                // Handle reply-only message
-                return formatMessageToWikitext(referencedMessage, authors, true) + "\n\n" +
-                       formatMessageToWikitext(message, authors);
-              }
-            } else {
-              console.error("This reply message has no referenced message:", message);
-              return formatMessageToWikitext(message, authors);
-            }
-          } else if (isForwarded) {
-            // Handle forwarded-only message
-            let messageSnapshot = message.message_snapshots[0].message;
-            messageSnapshot.author = message.author; // message_snapshots don't have author info, so set as the forwarded message's author
-            return formatMessageToWikitext(messageSnapshot, authors, false, true);
-          } else {
-            // handle normal messages
-            return formatMessageToWikitext(message, authors); // normal message
-          }
+          return formatMessageToWikitext(message, authors);
         }).join('\n\n');
 
         // Create a buffer from the content
