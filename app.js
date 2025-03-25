@@ -170,6 +170,15 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           .filter(message => !message.author.bot) // Remove bot messages
           .reverse();
         const fileContent = `<templatestyles src="Template:DiscordLog/styles.css"/>\n` + messagesReversed.map(message => {
+          if (message.type === 19) { // reply message
+            // insert the reply message  here
+            if (message.referenced_message) {
+              return formatMessageToWikitext(message.referenced_message, authors, true) + "\n\n" + formatMessageToWikitext(message, authors);
+            } else {
+              console.log("This reply message has no referenced message:", message);
+              return formatMessageToWikitext(message, authors);
+            }
+          }
           return formatMessageToWikitext(message, authors);
         }).join('\n\n');
 

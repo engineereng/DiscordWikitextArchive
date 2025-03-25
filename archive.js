@@ -8,10 +8,11 @@ import {
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
    * @param {Array} authors The array of verified members
+   * @param {boolean} reply Whether the message is a reply
    * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
    * @returns A string of the message formatted as wikitext
    */
-export function formatMessageToWikitext (message, authors, simpleDate = true) {
+export function formatMessageToWikitext (message, authors, reply = false, simpleDate = true) {
     // Format:
     // {{DiscordLog|t=timestamp|authorLink|content}}
     const templatePrefix = `{{DiscordLog2`
@@ -25,7 +26,10 @@ export function formatMessageToWikitext (message, authors, simpleDate = true) {
       parts.push('class=system-message');
       parts.push(`t2=${timestampFormatted}`);
     } else {
-      parts.push(`t=${timestampFormatted}`);
+        if (reply) { // replies have the class ping-reply
+            parts.push('class=ping-reply');
+        }
+        parts.push(`t=${timestampFormatted}`);
     }
 
     let authorWikiAccount = authors.find(author => author.memberId === message.author.id)
