@@ -9,12 +9,17 @@ import {
    * @param {*} message The message to format. Format:
    * @param {Array} authors The array of verified members
    * @param {boolean} reply Whether the message is a reply
+   * @param {boolean} forwarded Whether the message is a forwarded message
    * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
    * @returns A string of the message formatted as wikitext
    */
-export function formatMessageToWikitext (message, authors, reply = false, simpleDate = true) {
+export function formatMessageToWikitext (message, authors, reply = false, forwarded = false, simpleDate = true) {
     // Format:
     // {{DiscordLog|t=timestamp|authorLink|content}}
+    if (reply && forwarded) {
+        console.error("This message is both a reply and a forwarded message:", message);
+        return '';
+    }
     const templatePrefix = `{{DiscordLog2`
     const parts = [];
     parts.push(templatePrefix);
@@ -42,8 +47,12 @@ export function formatMessageToWikitext (message, authors, reply = false, simple
     parts.push(`1=${authorWikiAccount}`);
 
     if (message.content) {
-      const wikitextContent = convertDiscordToWikitext(message.content, authors);
-      parts.push(`2=${wikitextContent}`);
+      const wikitextContent = convertDiscordToWikitext(message.content, authors, forwarded);
+      if (forwarded) {
+        parts.push(`2=''Forwarded:''\n${wikitextContent}`);
+      } else {
+        parts.push(`2=${wikitextContent}`);
+      }
     } else if (message.type === 6) { // Pin message
       // Pin messages have no content, so we need to add the message ourselves
       parts.push(`2=pinned '''a message''' to this channel. See all '''pinned messages'''`);

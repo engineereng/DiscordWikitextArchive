@@ -175,9 +175,13 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             if (message.referenced_message) {
               return formatMessageToWikitext(message.referenced_message, authors, true) + "\n\n" + formatMessageToWikitext(message, authors);
             } else {
-              console.log("This reply message has no referenced message:", message);
+              console.error("This reply message has no referenced message:", message);
               return formatMessageToWikitext(message, authors);
             }
+          } else if (message.message_reference && message.message_reference.type === 1) { // forwarded message
+            let messageSnapshot = message.message_snapshots[0].message;
+            messageSnapshot.author = message.author; // message_snapshots don't have author info, so set as the forwarded message's author
+            return formatMessageToWikitext(messageSnapshot, authors, false, true);
           }
           return formatMessageToWikitext(message, authors);
         }).join('\n\n');

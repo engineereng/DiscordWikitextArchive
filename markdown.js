@@ -347,12 +347,11 @@ export const renderContent = (content, { containsList, containsQuotes } = {}) =>
  * Convert Discord-formatted text to wikitext
  * @param {string} content The Discord-formatted text to convert
  * @param {Array} authors Array of verified members for @mention conversion
+ * @param {boolean} forwarded Whether the message is a forwarded message
  * @returns {string} The converted wikitext
  */
-export const convertDiscordToWikitext = (content, authors = []) => {
+export const convertDiscordToWikitext = (content, authors = [], forwarded = false) => {
   const startsWithList = contentStartsWith.list(content);
-  const startsWithQuote = contentStartsWith.quote(content);
-
   // First process templates and links
   content = processTemplates(content);
   content = processLinks(content);
@@ -453,8 +452,9 @@ export const convertDiscordToWikitext = (content, authors = []) => {
       return `[[${pageName.replace(/_/g, ' ')}]]`;
     });
 
-  // if content has multiple lines, surround it with <poem> tags
-  if (content.split('\n').length > 1) {
+  if (forwarded) {
+    content = `<pre>${content}</pre>`;
+  } else if (content.split('\n').length > 1) {   // if content has multiple lines, <pre> tags are necessary for rendering
     content = `<poem>${content}</poem>`;
   }
 
