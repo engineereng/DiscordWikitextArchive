@@ -290,7 +290,7 @@ export const processHeadings = (content) => {
 };
 
 export const processQuotes = (content) => {
-  return content.replace(/^>\s*(.+)$/gm, ' $1');
+  return content.replace(/^>\s*(.+)$/gm, '<pre>$1</pre>');
 };
 
 export const processVotingEmojis = (content) => {
@@ -381,6 +381,7 @@ export const convertDiscordToWikitext = (content, authors = []) => {
   let processedLines = [];
   let inList = false;
   let listIndent = 0;
+  let quoteBlock = [];
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
@@ -389,12 +390,23 @@ export const convertDiscordToWikitext = (content, authors = []) => {
     const orderedMatch = line.match(/^(\s*)\d+\.\s+(.+)/);
 
     if (isQuote) {
-      // Process quote content with markdown
-      const quoteContent = isQuote[1];
-      const renderedContent = md.render(quoteContent)
-        .replace(/<\/?p>/g, '')
-        .replace(/\n$/, '');
-      processedLines.push(' ' + renderedContent);
+      // Add to quote block
+      quoteBlock.push(isQuote[1]);
+
+      // Check if next line is also a quote
+      const nextLine = lines[i + 1];
+      const isNextQuote = nextLine && nextLine.match(/^>\s*(.+)$/);
+
+      // If next line is not a quote, process the block
+      if (!isNextQuote) {
+        const renderedContent = quoteBlock.map(quote => {
+          return md.render(quote)
+            .replace(/<\/?p>/g, '')
+            .replace(/\n$/, '');
+        }).join('\n');
+        processedLines.push(`<pre>${renderedContent}</pre>`);
+        quoteBlock = [];
+      }
     } else if (unorderedMatch || orderedMatch) {
       if (!inList) {
         inList = true;
@@ -442,7 +454,7 @@ export const convertDiscordToWikitext = (content, authors = []) => {
     content = `<poem>${content}</poem>`;
   }
 
-  return startsWithList || startsWithQuote ? '\n' + content : content;
+  return startsWithList ? '\n' + content : content;
 };
 
 // Export markdown-it instance if needed elsewhere
