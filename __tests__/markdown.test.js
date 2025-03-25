@@ -312,6 +312,18 @@ describe('Discord to Wikitext Conversion', () => {
   });
 
   describe('Full Message Formatting', () => {
+    test('Pin message', () => {
+      const message = {
+        content: '',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z',
+        type: 6
+      };
+      expect(formatMessageToWikitext(message, authors)).toBe(
+        `{{DiscordLog2|class=system-message|t2= 21:36|1=Ironwestie|2=pinned '''a message''' to this channel. See all '''pinned messages'''}}`
+      );
+    });
+
     test('Message with multiple lines', () => {
       const message = {
         content: 'First line\nSecond line',

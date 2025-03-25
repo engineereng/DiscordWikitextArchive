@@ -20,7 +20,13 @@ export function formatMessageToWikitext (message, authors, simpleDate = true) {
 
     const timestamp = new Date(message.timestamp).toUTCString();
     const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
-    parts.push(`t=${timestampFormatted}`);
+
+    if (message.type === 6) { // Pin message
+      parts.push('class=system-message');
+      parts.push(`t2=${timestampFormatted}`);
+    } else {
+      parts.push(`t=${timestampFormatted}`);
+    }
 
     let authorWikiAccount = authors.find(author => author.memberId === message.author.id)
     if (!authorWikiAccount) {
@@ -34,6 +40,9 @@ export function formatMessageToWikitext (message, authors, simpleDate = true) {
     if (message.content) {
       const wikitextContent = convertDiscordToWikitext(message.content, authors);
       parts.push(`2=${wikitextContent}`);
+    } else if (message.type === 6) { // Pin message
+      // Pin messages have no content, so we need to add the message ourselves
+      parts.push(`2=pinned '''a message''' to this channel. See all '''pinned messages'''`);
     }
 
     // Add embed and attachment content
