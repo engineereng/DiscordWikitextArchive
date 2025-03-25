@@ -355,12 +355,23 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
             content: "No subcommand specified",
+            flags: 4096 // silent flag to prevent the bot from sending alert messages
           }
         });
       }
 
       const { guild_id } = req.body;
       const subcommand = options[0].name; // 'add', 'remove', or 'list'
+
+      // Send initial response
+      await res.send({
+        type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          flags: 4096 // silent flag to prevent the bot from sending alert messages
+        }
+      });
+
+      let message;
 
       if (subcommand === 'role') {
         // /verified_members role <add|remove|list> <role_id>
@@ -372,27 +383,24 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           // File doesn't exist yet or other error, start with empty array
           allowedRoles = [];
         }
-        const subcommand = options[0].options[0].name; // 'add', 'remove', or 'list'
+        const roleSubcommand = options[0].options[0].name; // 'add', 'remove', or 'list'
         const roleId = options[0].options[0].options[0]?.value;
 
-
-        let message;
-
-        if (subcommand === 'add') {
+        if (roleSubcommand === 'add') {
           if (allowedRoles.includes(roleId)) {
             message = `Role <@&${roleId}> is already given to verified members`;
           } else {
             allowedRoles.push(roleId);
             message = `Role <@&${roleId}> is now given to verified members`;
           }
-        } else if (subcommand === 'remove') {
+        } else if (roleSubcommand === 'remove') {
           if (allowedRoles.includes(roleId)) {
             allowedRoles.splice(allowedRoles.indexOf(roleId), 1);
             message = `Role <@&${roleId}> is no longer given to verified members`;
           } else {
             message = `Role <@&${roleId}> is not given to verified members`;
           }
-        } else if (subcommand === 'list') {
+        } else if (roleSubcommand === 'list') {
           if (allowedRoles.length === 0) {
             message = "No roles are currently given to verified members.";
           } else {
@@ -402,99 +410,119 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         }
 
         await setVerifiedRoles(allowedRoles);
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: message,
-            flags: 4096 // silent flag to prevent the bot from sending alert messages
-          }
-        });
-      }
-
-      let allowedMembers = [];
-      try {
-        const storedMembers = await getVerifiedMembers();
-        allowedMembers = storedMembers;
-      } catch (err) {
-        // File doesn't exist yet or other error, start with empty array
-        allowedMembers = [];
-      }
-
-      let message;
-      if (subcommand === 'list') {
-        // /verified_members list
-        // Get all members with a wiki account
-        const members = await getVerifiedMembers();
-        if (members.length === 0) {
-          message = "No members have a wiki account.";
-        } else {
-          const membersList = members.map(member =>
-            `<@${member.memberId}> (${member.displayName}) - Wiki Account: ${member.wikiAccount}`
-          ).join('\n');
-          message = "Members with wiki accounts:\n" + membersList;
+      } else {
+        let allowedMembers = [];
+        try {
+          const storedMembers = await getVerifiedMembers();
+          allowedMembers = storedMembers;
+        } catch (err) {
+          // File doesn't exist yet or other error, start with empty array
+          allowedMembers = [];
         }
-      } else if (subcommand === 'add') {
-        // /verified_members add <member_id> <wiki_account>
-        const memberId = options[0].options[0].value;
-        const wikiAccount = options[0].options[1].value;
 
-        const existingMember = allowedMembers.find(m => m.memberId === memberId);
-        if (existingMember) {
-          message = `Member <@${memberId}> (${existingMember.displayName}) is already in the verified members list with wiki account "${existingMember.wikiAccount}"`;
-        } else {
-          try {
-            // Get member's display name from Discord
-            const memberInfo = await getMemberInfo(guild_id, memberId);
-            const displayName = memberInfo.nick || memberInfo.user.username;
+        if (subcommand === 'list') {
+          // /verified_members list
+          // Get all members with a wiki account
+          console.log('Getting verified members list...');
+          const members = await getVerifiedMembers();
+          console.log(`Found ${members.length} verified members`);
+          if (members.length === 0) {
+            message = "No members have a wiki account.";
+          } else {
+            console.log('Formatting members list...');
+            const membersList = members.map(member =>
+              `${member.displayName} (${member.memberId}) - Wiki Account: ${member.wikiAccount}`
+            ).join('\n');
 
-            allowedMembers.push({ memberId, wikiAccount, displayName });
-            // Add roles to member
-            const verifiedRoles = await getVerifiedRoles();
-            // For now, only one role is given to verified members
-            const roleId = verifiedRoles[0];
-            if (roleId) {
-              try {
-                await addRoleToMember(memberId, guild_id, roleId);
-                message = `Member <@${memberId}> (${displayName}) added to verified members list with wiki account "${wikiAccount}" and role <@&${roleId}>`;
-              } catch (error) {
-                console.error('Error adding role:', error);
-                message = `Member <@${memberId}> (${displayName}) added to verified members list with wiki account "${wikiAccount}" but there was an error adding the role: ${error.message}`;
+            // Create a buffer from the content
+            const buffer = Buffer.from(membersList, 'utf8');
+
+            // Send follow-up with file
+            const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
+            const formData = new FormData();
+            formData.append('payload_json', JSON.stringify({
+              content: "Here's the list of verified members:",
+              flags: 4096 // silent flag to prevent the bot from sending alert messages
+            }));
+            formData.append('file', new Blob([buffer]), 'verified_members.txt');
+
+            await fetch(webhookUrl, {
+              method: 'POST',
+              body: formData
+            });
+
+            return;
+          }
+        } else if (subcommand === 'add') {
+          // /verified_members add <member_id> <wiki_account>
+          const memberId = options[0].options[0].value;
+          const wikiAccount = options[0].options[1].value;
+
+          const existingMember = allowedMembers.find(m => m.memberId === memberId);
+          if (existingMember) {
+            message = `Member <@${memberId}> (${existingMember.displayName}) is already in the verified members list with wiki account "${existingMember.wikiAccount}"`;
+          } else {
+            try {
+              // Get member's display name from Discord
+              const memberInfo = await getMemberInfo(guild_id, memberId);
+              const displayName = memberInfo.nick || memberInfo.user.username;
+
+              allowedMembers.push({ memberId, wikiAccount, displayName });
+              // Add roles to member
+              const verifiedRoles = await getVerifiedRoles();
+              // For now, only one role is given to verified members
+              const roleId = verifiedRoles[0];
+              if (roleId) {
+                try {
+                  await addRoleToMember(memberId, guild_id, roleId);
+                  message = `Member <@${memberId}> (${displayName}) added to verified members list with wiki account "${wikiAccount}" and role <@&${roleId}>`;
+                } catch (error) {
+                  console.error('Error adding role:', error);
+                  message = `Member <@${memberId}> (${displayName}) added to verified members list with wiki account "${wikiAccount}" but there was an error adding the role: ${error.message}`;
+                }
+              } else {
+                message = `Member <@${memberId}> (${displayName}) added to verified members list with wiki account "${wikiAccount}" but no role was given to them`;
               }
-            } else {
-              message = `Member <@${memberId}> (${displayName}) added to verified members list with wiki account "${wikiAccount}" but no role was given to them`;
+            } catch (error) {
+              console.error('Error getting member info:', error);
+              message = `Error getting member information: ${error.message}`;
             }
-          } catch (error) {
-            console.error('Error getting member info:', error);
-            message = `Error getting member information: ${error.message}`;
+          }
+        } else if (subcommand === 'remove') {
+          // /verified_members remove <member_id>
+          const memberId = options[0].options[0].value;
+
+          const memberIndex = allowedMembers.findIndex(m => m.memberId === memberId);
+          if (memberIndex !== -1) {
+            const member = allowedMembers[memberIndex];
+            allowedMembers.splice(memberIndex, 1);
+            message = `Member <@${memberId}> (${member.displayName}) removed from verified members list`;
+          } else {
+            message = `Member <@${memberId}> is not in the verified members list`;
           }
         }
-      } else if (subcommand === 'remove') {
-        // /verified_members remove <member_id>
-        const memberId = options[0].options[0].value;
 
-        const memberIndex = allowedMembers.findIndex(m => m.memberId === memberId);
-        if (memberIndex !== -1) {
-          const member = allowedMembers[memberIndex];
-          allowedMembers.splice(memberIndex, 1);
-          message = `Member <@${memberId}> (${member.displayName}) removed from verified members list`;
-        } else {
-          message = `Member <@${memberId}> is not in the verified members list`;
-        }
+        // Save updated members back to file
+        await setVerifiedMembers(allowedMembers);
       }
 
-      // Save updated members back to file
-      await setVerifiedMembers(allowedMembers);
-
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
+      // Send follow-up with the result
+      const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
+      console.log("Sending follow-up with message:", message);
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           content: message,
           flags: 4096 // silent flag to prevent the bot from sending alert messages
-        }
+        })
       });
+
+      // log discord response
+      console.log("Discord response:", response);
+
+      return;
     }
-
-
 
     console.error(`unknown command: ${name}`);
     return res.status(400).json({ error: 'unknown command' });
