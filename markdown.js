@@ -370,7 +370,8 @@ export const convertDiscordToWikitext = (content, authors = []) => {
     })
     .replace(/<#(\d+)>/g, '#$1')
     .replace(/<@&(\d+)>/g, '@$1')
-    .replace(/<:([^:]+):(\d+)>/g, ':$1:');
+    .replace(/<:([^:]+):(\d+)>/g, ':$1:')
+    .replace(/(\=\=\=)/g, '<nowiki>$1</nowiki>');
 
   // Process voting emojis
   content = processVotingEmojis(content);
@@ -435,6 +436,11 @@ export const convertDiscordToWikitext = (content, authors = []) => {
     .replace(/https:\/\/siivagunner\.fandom\.com\/wiki\/([^\s\]]+)/g, (match, pageName) => {
       return `[[${pageName.replace(/_/g, ' ')}]]`;
     });
+
+  // if content has multiple lines, surround it with <poem> tags
+  if (content.split('\n').length > 1) {
+    content = `<poem>${content}</poem>`;
+  }
 
   return startsWithList || startsWithQuote ? '\n' + content : content;
 };

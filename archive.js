@@ -12,9 +12,16 @@ import {
    * @returns A string of the message formatted as wikitext
    */
 export function formatMessageToWikitext (message, authors, simpleDate = true) {
+    // Format:
+    // {{DiscordLog|t=timestamp|authorLink|content}}
+    const templatePrefix = `{{DiscordLog2`
     const parts = [];
+    parts.push(templatePrefix);
+
     const timestamp = new Date(message.timestamp).toUTCString();
     const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
+    parts.push(`t=${timestampFormatted}`);
+
     let authorWikiAccount = authors.find(author => author.memberId === message.author.id)
     if (!authorWikiAccount) {
         console.log(`Couldn't find message author: ${message.author.username}`);
@@ -22,31 +29,34 @@ export function formatMessageToWikitext (message, authors, simpleDate = true) {
     } else {
         authorWikiAccount = authorWikiAccount.wikiAccount;
     }
-    const authorLink = `[[User:${authorWikiAccount}|${authorWikiAccount}]]`;
-
-    parts.push(`*${timestampFormatted}: ${authorLink}:`);
+    parts.push(`1=${authorWikiAccount}`);
 
     if (message.content) {
       const wikitextContent = convertDiscordToWikitext(message.content, authors);
-      parts.push(wikitextContent);
+      parts.push(`2=${wikitextContent}`);
     }
 
     // Add embed and attachment content
+    let embeds = [];
     if (message.embeds?.length > 0) {
       message.embeds.forEach(embed => {
-        if (embed.title) parts.push(`[Embed Title] ${embed.title}`);
-        if (embed.description) parts.push(`[Embed Description] ${embed.description}`);
-        if (embed.url) parts.push(`[Embed URL] ${embed.url}`);
+        if (embed.title) embeds.push(`[Embed Title] ${embed.title}`);
+        if (embed.description) embeds.push(`[Embed Description] ${embed.description}`);
+        if (embed.url) embeds.push(`[Embed URL] ${embed.url}`);
       });
     }
 
     if (message.attachments?.length > 0) {
       message.attachments.forEach(attachment => {
-        parts.push(`[Attachment] ${attachment.url}`);
+        embeds.push(`[Attachment] ${attachment.url}`);
       });
     }
 
-    return parts.join(' ');
+    if (embeds.length > 0) {
+        parts.push(`${embeds.join('\n')}`);
+    }
+
+    return parts.join('|') + "}}";
   }
 
 /**
