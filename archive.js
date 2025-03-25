@@ -16,10 +16,6 @@ import {
 export function formatMessageToWikitext (message, authors, reply = false, forwarded = false, simpleDate = true) {
     // Format:
     // {{DiscordLog|t=timestamp|authorLink|content}}
-    if (reply && forwarded) {
-        console.error("This message is both a reply and a forwarded message:", message);
-        return '';
-    }
     const templatePrefix = `{{DiscordLog2`
     const parts = [];
     parts.push(templatePrefix);
