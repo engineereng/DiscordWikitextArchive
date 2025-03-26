@@ -8,7 +8,7 @@ import {
 } from 'discord-interactions';
 import { getRandomEmoji } from './utils.js';
 import {
-  formatMessageToWikitext,
+  formatMessageWithContext,
   readDiscordThread,
   getAllowedChannels,
   setAllowedChannels,
@@ -170,7 +170,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           .filter(message => !message.author.bot) // Remove bot messages
           .reverse();
         const fileContent = `<templatestyles src="Template:DiscordLog/styles.css"/>\n` + messagesReversed.map(message => {
-          return formatMessageToWikitext(message, authors);
+          return formatMessageWithContext(message, authors);
         }).join('\n\n');
 
         // Create a buffer from the content
