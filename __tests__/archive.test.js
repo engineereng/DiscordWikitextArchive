@@ -292,4 +292,55 @@ describe('Message Formatting', () => {
       );
     });
   });
+
+  describe('Messages across different dates', () => {
+    test('Message from the same day', () => {
+      const message = {
+        content: 'This is a message from today',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z'
+      };
+      const message2 = {
+        content: 'This is a message from today as well',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z'
+      };
+      expect(formatMessageToWikitext(message, authors)).toBe(
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}'
+      );
+      expect(formatMessageToWikitext(message2, authors)).toBe(
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today as well}}'
+      );
+      expect(formatMessageWithContext([message, message2], authors)).toBe(
+        '{{DiscordLog2|class=date-separator|t=March 21, 2025}}\n\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}\n\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today as well}}'
+      );
+    });
+
+    test('Message from today and one from yesterday', () => {
+      const todayMessage = {
+        content: 'This is a message from today',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z'
+      };
+      const yesterdayMessage = {
+        content: 'This is a message from yesterday',
+        author: { id: '123' },
+        timestamp: '2025-03-20T21:36:27.000Z'
+      };
+      expect(formatMessageToWikitext(yesterdayMessage, authors)).toBe(
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from yesterday}}'
+      );
+      expect(formatMessageToWikitext(todayMessage, authors)).toBe(
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}'
+      );
+      expect(formatMessageWithContext([yesterdayMessage, todayMessage], authors)).toBe(
+        '{{DiscordLog2|class=date-separator|t=March 20, 2025}}\n\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from yesterday}}\n\n' +
+        '{{DiscordLog2|class=date-separator|t=March 21, 2025}}\n\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}'
+      );
+    });
+  });
 });
