@@ -290,7 +290,7 @@ export const processHeadings = (content) => {
 };
 
 export const processQuotes = (content) => {
-  return content.replace(/^>\s*(.+)$/gm, ' $1');
+  return content.replace(/^>\s*(.+)$/gm, '<pre>$1</pre>');
 };
 
 export const processVotingEmojis = (content) => {
@@ -347,12 +347,11 @@ export const renderContent = (content, { containsList, containsQuotes } = {}) =>
  * Convert Discord-formatted text to wikitext
  * @param {string} content The Discord-formatted text to convert
  * @param {Array} authors Array of verified members for @mention conversion
+ * @param {boolean} forwarded Whether the message is a forwarded message
  * @returns {string} The converted wikitext
  */
-export const convertDiscordToWikitext = (content, authors = []) => {
+export const convertDiscordToWikitext = (content, authors = [], forwarded = false) => {
   const startsWithList = contentStartsWith.list(content);
-  const startsWithQuote = contentStartsWith.quote(content);
-
   // First process templates and links
   content = processTemplates(content);
   content = processLinks(content);
@@ -370,7 +369,8 @@ export const convertDiscordToWikitext = (content, authors = []) => {
     })
     .replace(/<#(\d+)>/g, '#$1')
     .replace(/<@&(\d+)>/g, '@$1')
-    .replace(/<:([^:]+):(\d+)>/g, ':$1:');
+    .replace(/<:([^:]+):(\d+)>/g, ':$1:')
+    .replace(/(\=\=\=)/g, '<nowiki>$1</nowiki>');
 
   // Process voting emojis
   content = processVotingEmojis(content);
@@ -380,6 +380,7 @@ export const convertDiscordToWikitext = (content, authors = []) => {
   let processedLines = [];
   let inList = false;
   let listIndent = 0;
+  let quoteBlock = [];
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
@@ -388,12 +389,27 @@ export const convertDiscordToWikitext = (content, authors = []) => {
     const orderedMatch = line.match(/^(\s*)\d+\.\s+(.+)/);
 
     if (isQuote) {
-      // Process quote content with markdown
-      const quoteContent = isQuote[1];
-      const renderedContent = md.render(quoteContent)
-        .replace(/<\/?p>/g, '')
-        .replace(/\n$/, '');
-      processedLines.push(' ' + renderedContent);
+      // Add to quote block
+      quoteBlock.push(isQuote[1]);
+
+      // Check if next line is also a quote
+      const nextLine = lines[i + 1];
+      const isNextQuote = nextLine && nextLine.match(/^>\s*(.+)$/);
+
+      // If next line is not a quote, process the block
+      if (!isNextQuote) {
+        const renderedContent = quoteBlock.map(quote => {
+          // Don't process markdown for list items in quotes
+          if (quote.trim().startsWith('* ')) {
+            return quote.trim();
+          }
+          return md.render(quote)
+            .replace(/<\/?p>/g, '')
+            .replace(/\n$/, '');
+        }).join('\n');
+        processedLines.push(`<pre>${renderedContent}</pre>`);
+        quoteBlock = [];
+      }
     } else if (unorderedMatch || orderedMatch) {
       if (!inList) {
         inList = true;
@@ -436,7 +452,13 @@ export const convertDiscordToWikitext = (content, authors = []) => {
       return `[[${pageName.replace(/_/g, ' ')}]]`;
     });
 
-  return startsWithList || startsWithQuote ? '\n' + content : content;
+  if (forwarded) {
+    content = `<pre>${content}</pre>`;
+  } else if (content.split('\n').length > 1) {   // if content has multiple lines, <pre> tags are necessary for rendering
+    content = `<poem>${content}</poem>`;
+  }
+
+  return startsWithList ? '\n' + content : content;
 };
 
 // Export markdown-it instance if needed elsewhere

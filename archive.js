@@ -8,13 +8,31 @@ import {
    * Format a message to wikitext
    * @param {*} message The message to format. Format:
    * @param {Array} authors The array of verified members
+   * @param {boolean} reply Whether the message is a reply
+   * @param {boolean} forwarded Whether the message is a forwarded message
    * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
    * @returns A string of the message formatted as wikitext
    */
-export function formatMessageToWikitext (message, authors, simpleDate = true) {
+export function formatMessageToWikitext (message, authors, reply = false, forwarded = false, simpleDate = true) {
+    // Format:
+    // {{DiscordLog|t=timestamp|authorLink|content}}
+    const templatePrefix = `{{DiscordLog2`
     const parts = [];
+    parts.push(templatePrefix);
+
     const timestamp = new Date(message.timestamp).toUTCString();
     const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
+
+    if (message.type === 6) { // Pin message
+      parts.push('class=system-message');
+      parts.push(`t2=${timestampFormatted}`);
+    } else {
+        if (reply) { // replies have the class ping-reply
+            parts.push('class=ping reply');
+        }
+        parts.push(`t=${timestampFormatted}`);
+    }
+
     let authorWikiAccount = authors.find(author => author.memberId === message.author.id)
     if (!authorWikiAccount) {
         console.log(`Couldn't find message author: ${message.author.username}`);
@@ -22,31 +40,42 @@ export function formatMessageToWikitext (message, authors, simpleDate = true) {
     } else {
         authorWikiAccount = authorWikiAccount.wikiAccount;
     }
-    const authorLink = `[[User:${authorWikiAccount}|${authorWikiAccount}]]`;
-
-    parts.push(`*${timestampFormatted}: ${authorLink}:`);
+    parts.push(`1=${authorWikiAccount}`);
 
     if (message.content) {
-      const wikitextContent = convertDiscordToWikitext(message.content, authors);
-      parts.push(wikitextContent);
+      const wikitextContent = convertDiscordToWikitext(message.content, authors, forwarded);
+      if (forwarded) {
+        parts.push(`2=''Forwarded:''\n${wikitextContent}`);
+      } else {
+        parts.push(`2=${wikitextContent}`);
+      }
+    } else if (message.type === 6) { // Pin message
+      // Pin messages have no content, so we need to add the message ourselves
+      parts.push(`2=pinned '''a message''' to this channel. See all '''pinned messages'''`);
     }
 
     // Add embed and attachment content
+    let embeds = [];
     if (message.embeds?.length > 0) {
       message.embeds.forEach(embed => {
-        if (embed.title) parts.push(`[Embed Title] ${embed.title}`);
-        if (embed.description) parts.push(`[Embed Description] ${embed.description}`);
-        if (embed.url) parts.push(`[Embed URL] ${embed.url}`);
+        if (embed.title) embeds.push(`[Embed Title] ${embed.title}`);
+        if (embed.description) embeds.push(`[Embed Description] ${embed.description}`);
+        if (embed.url) embeds.push(`[Embed URL] ${embed.url}`);
       });
     }
 
     if (message.attachments?.length > 0) {
       message.attachments.forEach(attachment => {
-        parts.push(`[Attachment] ${attachment.url}`);
+        embeds.push(`[Attachment] ${attachment.url}`);
       });
     }
 
-    return parts.join(' ');
+    // do not render embeds for now
+    // if (embeds.length > 0) {
+    //     parts.push(`${embeds.join('\n')}`);
+    // }
+
+    return parts.join('|') + "}}";
   }
 
 /**
@@ -236,4 +265,44 @@ export async function getMemberInfo(guildId, memberId) {
         console.error('Error getting member info:', error);
         throw error;
     }
+}
+
+/**
+ * Format a message with its context (replies and forwards)
+ * @param {Object} message The message to format
+ * @param {Array} authors Array of verified members
+ * @returns {string} The formatted message with context
+ */
+export function formatMessageWithContext(message, authors) {
+  const isReply = message.type === 19;
+  const isForwarded = message.message_reference?.type === 1;
+
+  if (isReply) {
+    // Handle reply message
+    const referencedMessage = message.referenced_message;
+    if (referencedMessage) {
+      if (referencedMessage.message_snapshots && referencedMessage.message_snapshots.length > 0) {
+        // Handle a reply to a forwarded message
+        const messageSnapshot = referencedMessage.message_snapshots[0].message;
+        messageSnapshot.author = referencedMessage.author;
+        return formatMessageToWikitext(messageSnapshot, authors, true, true) + "\n\n" +
+               formatMessageToWikitext(message, authors);
+      } else {
+        // Handle reply-only message
+        return formatMessageToWikitext(referencedMessage, authors, true) + "\n\n" +
+               formatMessageToWikitext(message, authors);
+      }
+    } else {
+      console.error("This reply message has no referenced message:", message);
+      return formatMessageToWikitext(message, authors);
+    }
+  } else if (isForwarded) {
+    // Handle forwarded-only message
+    let messageSnapshot = message.message_snapshots[0].message;
+    messageSnapshot.author = message.author; // message_snapshots don't have author info, so set as the forwarded message's author
+    return formatMessageToWikitext(messageSnapshot, authors, false, true);
+  } else {
+    // handle normal messages
+    return formatMessageToWikitext(message, authors); // normal message
+  }
 }

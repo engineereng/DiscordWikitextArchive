@@ -169,7 +169,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         const messagesReversed = messages
           .filter(message => !message.author.bot) // Remove bot messages
           .reverse();
-        const fileContent = messagesReversed.map(message => {
+        const fileContent = `<templatestyles src="Template:DiscordLog/styles.css"/>\n` + messagesReversed.map(message => {
           return formatMessageToWikitext(message, authors);
         }).join('\n\n');
 
