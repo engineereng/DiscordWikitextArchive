@@ -278,14 +278,14 @@ export const processLists = (content) => {
 
 export const processHeadings = (content) => {
   return content.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, text) => {
-    // For headers with 4 or more hashes, keep original format but add newlines
+    // For headers with 4 or more hashes, keep original format
     if (hashes.length >= 4) {
-      return '\n\n' + match;
+      return match;
     }
     // Add 1 to header level since Discord's # is h2 (h1 is reserved for page titles)
     const level = Math.min(6, hashes.length + 1);
-    // Add newlines before header and spaces around text
-    return `\n\n<h${level}> ${text} </h${level}>`;
+    // Add spaces around text
+    return `<h${level}> ${text} </h${level}>`;
   });
 };
 
@@ -378,8 +378,6 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
   // Split content into lines for processing
   let lines = content.split('\n');
   let processedLines = [];
-  let inList = false;
-  let listIndent = 0;
   let quoteBlock = [];
 
   for (let i = 0; i < lines.length; i++) {
@@ -411,11 +409,6 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
         quoteBlock = [];
       }
     } else if (unorderedMatch || orderedMatch) {
-      if (!inList) {
-        inList = true;
-        processedLines.push('');
-      }
-
       const [, indent, itemContent] = unorderedMatch || orderedMatch;
       const indentLevel = Math.floor(indent.length / 2);
 
@@ -428,10 +421,6 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
       const marker = (orderedMatch ? '#' : '*').repeat(indentLevel + 1);
       processedLines.push(marker + ' ' + renderedContent);
     } else {
-      if (inList) {
-        inList = false;
-        processedLines.push('');
-      }
       // Process regular lines with markdown
       const renderedContent = md.render(line)
         .replace(/<\/?p>/g, '')
@@ -454,11 +443,14 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
 
   if (forwarded) {
     content = `<pre>${content}</pre>`;
-  } else if (content.split('\n').length > 1) {   // if content has multiple lines, <pre> tags are necessary for rendering
+  } else if (content.split('\n').length > 1 || startsWithList) {   // if content has multiple lines, lists, or headings, <poem> tags are necessary for rendering
+    if (startsWithList) {
+      content = '\n' + content;
+    }
     content = `<poem>${content}</poem>`;
   }
 
-  return startsWithList ? '\n' + content : content;
+  return content;
 };
 
 // Export markdown-it instance if needed elsewhere

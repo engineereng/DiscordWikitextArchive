@@ -268,6 +268,37 @@ export async function getMemberInfo(guildId, memberId) {
 }
 
 /**
+ * Format an array of messages with their context (replies and forwards)
+ * @param {Array} messages The array of messages to format
+ * @param {Array} authors Array of verified members
+ * @returns {string} The formatted messages with context
+ */
+export function formatMessagesWithContext(messages, authors) {
+  let result = '';
+  let currentDate = null;
+  for (const msg of messages) {
+    const msgDate = new Date(msg.timestamp).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+
+    // Add date separator if date changed
+    if (currentDate !== msgDate) {
+      result += `{{DiscordLog2|class=date-separator|t=${msgDate}}}\n`;
+      currentDate = msgDate;
+    }
+
+    result += formatMessageWithContext(msg, authors);
+    if (msg !== messages[messages.length - 1]) {
+      result += '\n';
+    }
+  }
+
+  return result;
+}
+
+/**
  * Format a message with its context (replies and forwards)
  * @param {Object} message The message to format
  * @param {Array} authors Array of verified members
@@ -285,11 +316,11 @@ export function formatMessageWithContext(message, authors) {
         // Handle a reply to a forwarded message
         const messageSnapshot = referencedMessage.message_snapshots[0].message;
         messageSnapshot.author = referencedMessage.author;
-        return formatMessageToWikitext(messageSnapshot, authors, true, true) + "\n\n" +
+        return formatMessageToWikitext(messageSnapshot, authors, true, true) + "\n" +
                formatMessageToWikitext(message, authors);
       } else {
         // Handle reply-only message
-        return formatMessageToWikitext(referencedMessage, authors, true) + "\n\n" +
+        return formatMessageToWikitext(referencedMessage, authors, true) + "\n" +
                formatMessageToWikitext(message, authors);
       }
     } else {
