@@ -1,4 +1,4 @@
-import { formatMessageToWikitext, formatMessageWithContext } from '../archive.js';
+import { formatMessageToWikitext, formatMessageWithContext, formatMessagesWithContext } from '../archive.js';
 
 describe('Message Formatting', () => {
   const authors = [
@@ -173,12 +173,12 @@ describe('Message Formatting', () => {
 
     test('Multi-line message with formatting', () => {
       const message = {
-        content: 'First line\n\n**Second line**\n\n> Quote\n\n- List item',
+        content: 'First line\n**Second line**\n> Quote\n- List item',
         author: { id: '123' },
         timestamp: '2025-03-21T21:36:27.000Z'
       };
       expect(formatMessageToWikitext(message, authors)).toBe(
-        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=<poem>First line\n\n\'\'\'Second line\'\'\'\n\n<pre>Quote</pre>\n\n\n* List item</poem>}}'
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=<poem>First line\n\'\'\'Second line\'\'\'\n<pre>Quote</pre>\n* List item</poem>}}'
       );
     });
   });
@@ -222,7 +222,7 @@ describe('Message Formatting', () => {
         }
       };
       expect(formatMessageWithContext(message, authors)).toBe(
-        '{{DiscordLog2|class=ping reply|t= 21:35|1=TestUser|2=Original message}}\n\n' +
+        '{{DiscordLog2|class=ping reply|t= 21:35|1=TestUser|2=Original message}}\n' +
         '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a reply}}'
       );
     });
@@ -246,7 +246,7 @@ describe('Message Formatting', () => {
         }
       };
       expect(formatMessageWithContext(message, authors)).toBe(
-        '{{DiscordLog2|class=ping reply|t= 21:35|1=TestUser|2=\'\'Forwarded:\'\'\n<pre>Original forwarded content</pre>}}\n\n' +
+        '{{DiscordLog2|class=ping reply|t= 21:35|1=TestUser|2=\'\'Forwarded:\'\'\n<pre>Original forwarded content</pre>}}\n' +
         '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a reply to a forwarded message}}'
       );
     });
@@ -305,15 +305,15 @@ describe('Message Formatting', () => {
         author: { id: '123' },
         timestamp: '2025-03-21T21:36:27.000Z'
       };
-      expect(formatMessageToWikitext(message, authors)).toBe(
+      expect(formatMessageWithContext(message, authors)).toBe(
         '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}'
       );
-      expect(formatMessageToWikitext(message2, authors)).toBe(
+      expect(formatMessageWithContext(message2, authors)).toBe(
         '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today as well}}'
       );
-      expect(formatMessageWithContext([message, message2], authors)).toBe(
-        '{{DiscordLog2|class=date-separator|t=March 21, 2025}}\n\n' +
-        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}\n\n' +
+      expect(formatMessagesWithContext([message, message2], authors)).toBe(
+        '{{DiscordLog2|class=date-separator|t=March 21, 2025}}\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}\n' +
         '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today as well}}'
       );
     });
@@ -329,16 +329,49 @@ describe('Message Formatting', () => {
         author: { id: '123' },
         timestamp: '2025-03-20T21:36:27.000Z'
       };
-      expect(formatMessageToWikitext(yesterdayMessage, authors)).toBe(
+      expect(formatMessageWithContext(yesterdayMessage, authors)).toBe(
         '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from yesterday}}'
       );
-      expect(formatMessageToWikitext(todayMessage, authors)).toBe(
+      expect(formatMessageWithContext(todayMessage, authors)).toBe(
         '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}'
       );
-      expect(formatMessageWithContext([yesterdayMessage, todayMessage], authors)).toBe(
-        '{{DiscordLog2|class=date-separator|t=March 20, 2025}}\n\n' +
-        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from yesterday}}\n\n' +
-        '{{DiscordLog2|class=date-separator|t=March 21, 2025}}\n\n' +
+      expect(formatMessagesWithContext([yesterdayMessage, todayMessage], authors)).toBe(
+        '{{DiscordLog2|class=date-separator|t=March 20, 2025}}\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from yesterday}}\n' +
+        '{{DiscordLog2|class=date-separator|t=March 21, 2025}}\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}'
+      );
+    });
+
+    test('Four messages from different dates', () => {
+      const message1 = {
+        content: 'This is a message from three days ago',
+        author: { id: '123' },
+        timestamp: '2025-03-18T21:36:27.000Z'
+      };
+      const message2 = {
+        content: 'This is a message from two days ago',
+        author: { id: '123' },
+        timestamp: '2025-03-19T21:36:27.000Z'
+      };
+      const message3 = {
+        content: 'This is a message from yesterday',
+        author: { id: '123' },
+        timestamp: '2025-03-20T21:36:27.000Z'
+      };
+      const message4 = {
+        content: 'This is a message from today',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z'
+      };
+      expect(formatMessagesWithContext([message1, message2, message3, message4], authors)).toBe(
+        '{{DiscordLog2|class=date-separator|t=March 18, 2025}}\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from three days ago}}\n' +
+        '{{DiscordLog2|class=date-separator|t=March 19, 2025}}\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from two days ago}}\n' +
+        '{{DiscordLog2|class=date-separator|t=March 20, 2025}}\n' +
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from yesterday}}\n' +
+        '{{DiscordLog2|class=date-separator|t=March 21, 2025}}\n' +
         '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a message from today}}'
       );
     });
