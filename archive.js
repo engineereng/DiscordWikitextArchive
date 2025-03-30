@@ -285,9 +285,6 @@ export function formatMessagesWithContext(messages, authors) {
 
     // Add date separator if date changed
     if (currentDate !== msgDate) {
-      if (currentDate !== null) {
-        result += '\n';
-      }
       result += `{{DiscordLog2|class=date-separator|t=${msgDate}}}\n`;
       currentDate = msgDate;
     }

@@ -150,42 +150,42 @@ describe('Discord to Wikitext Conversion', () => {
     test('Unordered list with dashes', () => {
       const input = '- Item 1\n- Item 2\n  - Subitem 2.1';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '\n<poem>\n* Item 1\n* Item 2\n** Subitem 2.1</poem>'
+        '<poem>\n* Item 1\n* Item 2\n** Subitem 2.1</poem>'
       );
     });
 
     test('Unordered list with asterisks', () => {
         const input = '* Item 1\n* Item 2\n  * Subitem 2.1';
         expect(convertDiscordToWikitext(input, authors)).toBe(
-          '\n<poem>\n* Item 1\n* Item 2\n** Subitem 2.1</poem>'
+          '<poem>\n* Item 1\n* Item 2\n** Subitem 2.1</poem>'
         );
     });
 
     test('Unordered list with indentations', () => {
       const input = '- List of stuff\n  - and things\n  * and more things';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '\n<poem>\n* List of stuff\n** and things\n** and more things</poem>'
+        '<poem>\n* List of stuff\n** and things\n** and more things</poem>'
       );
     });
 
     test('Unordered list with multiple levels of indentations', () => {
       const input = '* First\n  * indent level 1\n  * indent level 1\n    * indent level 2\n    * indent level 2\n  * indent level 1\n* Second';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '\n<poem>\n* First\n** indent level 1\n** indent level 1\n*** indent level 2\n*** indent level 2\n** indent level 1\n* Second</poem>'
+        '<poem>\n* First\n** indent level 1\n** indent level 1\n*** indent level 2\n*** indent level 2\n** indent level 1\n* Second</poem>'
       );
     });
 
     test('Ordered list', () => {
       const input = '1. First\n2. Second\n  1. Subsecond';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '\n<poem>\n# First\n# Second\n## Subsecond</poem>'
+        '<poem>\n# First\n# Second\n## Subsecond</poem>'
       );
     });
 
     test('Ordered list with multiple levels of indentations', () => {
       const input = '1. First\n  1. Subfirst\n  2. Subsecond\n2. Second\n  1. Subfirst\n  2. Subsecond';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '\n<poem>\n# First\n## Subfirst\n## Subsecond\n# Second\n## Subfirst\n## Subsecond</poem>'
+        '<poem>\n# First\n## Subfirst\n## Subsecond\n# Second\n## Subfirst\n## Subsecond</poem>'
       );
     });
   });
@@ -248,28 +248,28 @@ describe('Discord to Wikitext Conversion', () => {
     test('Heading with one hash', () => {
       const input = '# Heading';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<poem>\n\n<h2> Heading </h2></poem>'
+        '<h2> Heading </h2>'
       );
     });
 
     test('Heading with two hashes', () => {
       const input = '## Heading';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<poem>\n\n<h3> Heading </h3></poem>'
+        '<h3> Heading </h3>'
       );
     });
 
     test('Heading with three hashes', () => {
       const input = '### Heading';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<poem>\n\n<h4> Heading </h4></poem>'
+        '<h4> Heading </h4>'
       );
     });
 
     test('Heading with four hashes', () => {
       const input = '#### Heading';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<poem>\n\n#### Heading</poem>'
+        '#### Heading'
       );
     });
   });
@@ -312,6 +312,16 @@ describe('Discord to Wikitext Conversion', () => {
   });
 
   describe('Full Message Formatting', () => {
+    test('Message with quotes', () => {
+      const message = {
+        content: '> Quote',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z'
+      };
+      expect(formatMessageToWikitext(message, authors)).toBe(
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=<pre>Quote</pre>}}'
+      );
+    });
     test('Pin message', () => {
       const message = {
         content: '',
@@ -370,18 +380,18 @@ describe('Discord to Wikitext Conversion', () => {
 
     test('Complex message with multiple elements', () => {
       const message = {
-        content: '**Hello** <@123>!\n\n' +
+        content: '**Hello** <@123>!\n' +
           '1. First item with a [link](<https://siivagunner.fandom.com/wiki/Katamari_Day>)\n' +
-          '2. Second item with *emphasis*\n\n' +
+          '2. Second item with *emphasis*\n' +
           '> A quote with __underline__',
         author: { id: '123' },
         timestamp: '2025-03-21T21:39:50.000Z'
       };
       expect(formatMessageToWikitext(message, authors)).toBe(
         '{{DiscordLog2|t= 21:39|1=Ironwestie|2=<poem>' +
-        "'''Hello''' [[User:Ironwestie|Ironwestie]]!\n\n\n" +
+        "'''Hello''' [[User:Ironwestie|Ironwestie]]!\n" +
         '# First item with a [[Katamari Day|link]]\n' +
-        "# Second item with ''emphasis''\n\n\n" +
+        "# Second item with ''emphasis''\n" +
         '<pre>A quote with <u>underline</u></pre></poem>}}'
       );
     });
