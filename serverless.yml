@@ -1,0 +1,31 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: sgwiki
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: archive-bot
+service: discord-bot
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: prod
+  region: us-east-1
+  memorySize: 256
+  timeout: 30
+  apiGateway:
+    shouldStartNameWithService: true
+    binaryMediaTypes:
+      - '*/*'
+
+functions:
+  app:
+    handler: lambda.handler
+    events:
+      - http:
+          path: /
+          method: POST
+          cors: true
+    environment:
+      PUBLIC_KEY: ${env:PUBLIC_KEY}
+      DISCORD_TOKEN: ${env:DISCORD_TOKEN}
+      APP_ID: ${env:APP_ID}
+      GUILD_ID: ${env:GUILD_ID}
