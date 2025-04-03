@@ -178,7 +178,7 @@ describe('Message Formatting', () => {
         timestamp: '2025-03-21T21:36:27.000Z'
       };
       expect(formatMessageToWikitext(message, authors)).toBe(
-        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=<poem>First line\n\'\'\'Second line\'\'\'\n<pre>Quote</pre>\n* List item</poem>}}'
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=First line\n\'\'\'Second line\'\'\'\n<pre>Quote</pre>\n* List item}}'
       );
     });
   });

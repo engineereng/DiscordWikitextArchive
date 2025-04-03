@@ -443,11 +443,8 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
 
   if (forwarded) {
     content = `<pre>${content}</pre>`;
-  } else if (content.split('\n').length > 1 || startsWithList) {   // if content has multiple lines, lists, or headings, <poem> tags are necessary for rendering
-    if (startsWithList) {
-      content = '\n' + content;
-    }
-    content = `<poem>${content}</poem>`;
+  } else if (startsWithList) {
+    content = '\n' + content;
   }
 
   return content;
