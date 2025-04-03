@@ -302,6 +302,49 @@ describe('Discord to Wikitext Conversion', () => {
     });
   });
 
+  describe('Spoiler tags', () => {
+    test('Spoiler tag', () => {
+      const input = '||Spoiler||';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '<div class="spoiler">Spoiler</div>'
+      );
+    });
+
+    test('Spoiler tag with one line break', () => {
+      const input = '||This is a spoiler\nwith a line break in it||';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '<div class="spoiler">This is a spoiler\nwith a line break in it</div>'
+      );
+    });
+
+    test('Spoiler tag with multiple lines', () => {
+      const input = '||This is a spoiler\n\nwith two consecutive line breaks||';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '<div class="spoiler">This is a spoiler\n\nwith two consecutive line breaks</div>'
+      );
+    });
+
+    test('Spoiler tag with preceding and succeeding text', () => {
+      const input = 'Preceding text||This is a spoiler||Succeeding text';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        'Preceding text<div class="spoiler">This is a spoiler</div>Succeeding text'
+      );
+    });
+
+    test('Spoiler tag with a list inside it', () => {
+      const input = '||This is a\n- spoiler tag\n- with a list inside it||';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        '<div class="spoiler">This is a\n* spoiler tag\n* with a list inside it</div>'
+      );
+    });
+
+    test('Complicated spoiler example', () => {
+      const input = 'This is a||\n- spoiler tag\n## with a header inside it\n- and a list inside it\n  - and also a nested list item\n\n\n\nand a bunch of line breaks|| and inline text both preceding and succeeding it';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        'This is a<div class="spoiler">\n* spoiler tag\n{{Fake heading|h3|with a header inside it}}\n* and a list inside it\n** and also a nested list item\n\n\n\nand a bunch of line breaks</div> and inline text both preceding and succeeding it'
+      );
+    });
+  });
   describe('Voting emojis', () => {
     test('Simple emoji', () => {
       const input = ':smile:';

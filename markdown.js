@@ -293,6 +293,10 @@ export const processQuotes = (content) => {
   return content.replace(/^>\s*(.+)$/gm, '<blockquote>$1</blockquote>');
 };
 
+export const processSpoilers = (content) => {
+  return content.replace(/\|\|((?:\n|.)+?)\|\|/g, '<div class="spoiler">$1</div>');
+};
+
 export const processVotingEmojis = (content) => {
   const votingEmojis = {
     support: 'Voting-support.svg',
@@ -378,6 +382,9 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
 
   // Process headers
   content = processHeadings(content);
+
+  // Process spoilers
+  content = processSpoilers(content);
 
   // Process Discord-specific formatting
   content = content
