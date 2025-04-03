@@ -14,8 +14,8 @@ md.renderer.rules.strong_close = () => "'''";
 md.renderer.rules.em_open = () => "''";
 md.renderer.rules.em_close = () => "''";
 md.renderer.rules.code_inline = (tokens, idx) => `<code>${tokens[idx].content}</code>`;
-md.renderer.rules.fence = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`;
-md.renderer.rules.code_block = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`;
+md.renderer.rules.fence = (tokens, idx) => `<blockquote>${tokens[idx].content}</blockquote>`;
+md.renderer.rules.code_block = (tokens, idx) => `<blockquote>${tokens[idx].content}</blockquote>`;
 
 // List rendering rules for MediaWiki format
 md.renderer.rules.bullet_list_open = () => '';
@@ -285,12 +285,12 @@ export const processHeadings = (content) => {
     // Add 1 to header level since Discord's # is h2 (h1 is reserved for page titles)
     const level = Math.min(6, hashes.length + 1);
     // Add spaces around text
-    return `<h${level}> ${text} </h${level}>`;
+    return `{{Fake heading|h${level}|${text}}}`;
   });
 };
 
 export const processQuotes = (content) => {
-  return content.replace(/^>\s*(.+)$/gm, '<pre>$1</pre>');
+  return content.replace(/^>\s*(.+)$/gm, '<blockquote>$1</blockquote>');
 };
 
 export const processVotingEmojis = (content) => {
@@ -405,7 +405,7 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
             .replace(/<\/?p>/g, '')
             .replace(/\n$/, '');
         }).join('\n');
-        processedLines.push(`<pre>${renderedContent}</pre>`);
+        processedLines.push(`<blockquote>${renderedContent}</blockquote>`);
         quoteBlock = [];
       }
     } else if (unorderedMatch || orderedMatch) {
@@ -442,12 +442,9 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
     });
 
   if (forwarded) {
-    content = `<pre>${content}</pre>`;
-  } else if (content.split('\n').length > 1 || startsWithList) {   // if content has multiple lines, lists, or headings, <poem> tags are necessary for rendering
-    if (startsWithList) {
-      content = '\n' + content;
-    }
-    content = `<poem>${content}</poem>`;
+    content = `<blockquote>${content}</blockquote>`;
+  } else if (startsWithList) {
+    content = '\n' + content;
   }
 
   return content;

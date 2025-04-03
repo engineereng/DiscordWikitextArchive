@@ -26,11 +26,10 @@ export function formatMessageToWikitext (message, authors, reply = false, forwar
     if (message.type === 6) { // Pin message
       parts.push('class=system-message');
       parts.push(`t2=${timestampFormatted}`);
+    } else if (reply) { // replies have the class ping-reply and do not have a timestamp
+      parts.push('class=ping reply');
     } else {
-        if (reply) { // replies have the class ping-reply
-            parts.push('class=ping reply');
-        }
-        parts.push(`t=${timestampFormatted}`);
+      parts.push(`t=${timestampFormatted}`);
     }
 
     let authorWikiAccount = authors.find(author => author.memberId === message.author.id)
