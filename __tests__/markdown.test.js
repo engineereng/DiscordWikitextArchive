@@ -248,21 +248,21 @@ describe('Discord to Wikitext Conversion', () => {
     test('Heading with one hash', () => {
       const input = '# Heading';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<h2> Heading </h2>'
+        '{{Fake heading|h2|Heading}}'
       );
     });
 
     test('Heading with two hashes', () => {
       const input = '## Heading';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<h3> Heading </h3>'
+        '{{Fake heading|h3|Heading}}'
       );
     });
 
     test('Heading with three hashes', () => {
       const input = '### Heading';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<h4> Heading </h4>'
+        '{{Fake heading|h4|Heading}}'
       );
     });
 

@@ -285,7 +285,7 @@ export const processHeadings = (content) => {
     // Add 1 to header level since Discord's # is h2 (h1 is reserved for page titles)
     const level = Math.min(6, hashes.length + 1);
     // Add spaces around text
-    return `<h${level}> ${text} </h${level}>`;
+    return `{{Fake heading|h${level}|${text}}}`;
   });
 };
 
