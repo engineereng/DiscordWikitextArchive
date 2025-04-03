@@ -14,8 +14,8 @@ md.renderer.rules.strong_close = () => "'''";
 md.renderer.rules.em_open = () => "''";
 md.renderer.rules.em_close = () => "''";
 md.renderer.rules.code_inline = (tokens, idx) => `<code>${tokens[idx].content}</code>`;
-md.renderer.rules.fence = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`;
-md.renderer.rules.code_block = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`;
+md.renderer.rules.fence = (tokens, idx) => `<blockquote>${tokens[idx].content}</blockquote>`;
+md.renderer.rules.code_block = (tokens, idx) => `<blockquote>${tokens[idx].content}</blockquote>`;
 
 // List rendering rules for MediaWiki format
 md.renderer.rules.bullet_list_open = () => '';
@@ -290,7 +290,7 @@ export const processHeadings = (content) => {
 };
 
 export const processQuotes = (content) => {
-  return content.replace(/^>\s*(.+)$/gm, '<pre>$1</pre>');
+  return content.replace(/^>\s*(.+)$/gm, '<blockquote>$1</blockquote>');
 };
 
 export const processVotingEmojis = (content) => {
@@ -405,7 +405,7 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
             .replace(/<\/?p>/g, '')
             .replace(/\n$/, '');
         }).join('\n');
-        processedLines.push(`<pre>${renderedContent}</pre>`);
+        processedLines.push(`<blockquote>${renderedContent}</blockquote>`);
         quoteBlock = [];
       }
     } else if (unorderedMatch || orderedMatch) {
@@ -442,7 +442,7 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
     });
 
   if (forwarded) {
-    content = `<pre>${content}</pre>`;
+    content = `<blockquote>${content}</blockquote>`;
   } else if (startsWithList) {
     content = '\n' + content;
   }

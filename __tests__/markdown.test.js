@@ -194,35 +194,35 @@ describe('Discord to Wikitext Conversion', () => {
     test('Single line quote', () => {
       const input = '> This is a quote';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<pre>This is a quote</pre>'
+        '<blockquote>This is a quote</blockquote>'
       );
     });
 
     test('Multi-line quote', () => {
       const input = '> First line\n> Second line';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<pre>First line\nSecond line</pre>'
+        '<blockquote>First line\nSecond line</blockquote>'
       );
     });
 
     test('Mix of multiline and single line quotes', () => {
       const input = 'Not Quote\n> Quote\n> More quote\nNot quote\n> quote\nNot quote\n> Multiline quote line\n> Multiline quote line 2\nNot quote';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        'Not Quote\n<pre>Quote\nMore quote</pre>\nNot quote\n<pre>quote</pre>\nNot quote\n<pre>Multiline quote line\nMultiline quote line 2</pre>\nNot quote'
+        'Not Quote\n<blockquote>Quote\nMore quote</blockquote>\nNot quote\n<blockquote>quote</blockquote>\nNot quote\n<blockquote>Multiline quote line\nMultiline quote line 2</blockquote>\nNot quote'
       );
     });
 
     test('Quote at beginning of message', () => {
       const input = '> Quote at beginning\nNot quote';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<pre>Quote at beginning</pre>\nNot quote'
+        '<blockquote>Quote at beginning</blockquote>\nNot quote'
       );
     });
 
     test('Quote with list', () => {
       const input = '> Quote\n> * Item 1 - some content \n> * Item 2 - some content';
       expect(convertDiscordToWikitext(input, authors)).toBe(
-        '<pre>Quote\n* Item 1 - some content\n* Item 2 - some content</pre>'
+        '<blockquote>Quote\n* Item 1 - some content\n* Item 2 - some content</blockquote>'
       );
     });
 
@@ -319,7 +319,7 @@ describe('Discord to Wikitext Conversion', () => {
         timestamp: '2025-03-21T21:36:27.000Z'
       };
       expect(formatMessageToWikitext(message, authors)).toBe(
-        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=<pre>Quote</pre>}}'
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=<blockquote>Quote</blockquote>}}'
       );
     });
     test('Pin message', () => {
@@ -392,7 +392,7 @@ describe('Discord to Wikitext Conversion', () => {
         "'''Hello''' [[User:Ironwestie|Ironwestie]]!\n" +
         '# First item with a [[Katamari Day|link]]\n' +
         "# Second item with ''emphasis''\n" +
-        '<pre>A quote with <u>underline</u></pre>}}'
+        '<blockquote>A quote with <u>underline</u></blockquote>}}'
       );
     });
   });
