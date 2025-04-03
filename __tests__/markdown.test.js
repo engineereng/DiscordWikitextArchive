@@ -144,6 +144,34 @@ describe('Discord to Wikitext Conversion', () => {
         expect(convertDiscordToWikitext(input, authors)).toBe('Strikethrough: <s>Strikethrough</s>');
       });
     });
+
+    describe('Inline code', () => {
+      test('Code with `', () => {
+        const input = 'Code: `Code`';
+        expect(convertDiscordToWikitext(input, authors)).toBe('Code: <code>Code</code>');
+      });
+    });
+
+    describe('Code block', () => {
+      test('Code with ```', () => {
+        const input = 'Code: ```Code```';
+        expect(convertDiscordToWikitext(input, authors)).toBe('Code: <pre>Code</pre>');
+      });
+    });
+
+    describe('Code block with multiple lines', () => {
+      test('Code with ```', () => {
+        const input = 'Code: ```Code\nCode```';
+        expect(convertDiscordToWikitext(input, authors)).toBe('Code: <pre>Code\nCode</pre>');
+      });
+    });
+
+    describe('Code block with multiple lines', () => {
+      test('Code with ```', () => {
+        const input = 'Code: ```\nCode\nCode\n```';
+        expect(convertDiscordToWikitext(input, authors)).toBe('Code: <pre>Code\nCode</pre>');
+      });
+    });
   });
 
   describe('Lists', () => {

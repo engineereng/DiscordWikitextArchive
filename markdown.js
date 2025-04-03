@@ -15,7 +15,7 @@ md.renderer.rules.em_open = () => "''";
 md.renderer.rules.em_close = () => "''";
 md.renderer.rules.code_inline = (tokens, idx) => `<code>${tokens[idx].content}</code>`;
 md.renderer.rules.fence = (tokens, idx) => `<blockquote>${tokens[idx].content}</blockquote>`;
-md.renderer.rules.code_block = (tokens, idx) => `<blockquote>${tokens[idx].content}</blockquote>`;
+md.renderer.rules.code_block = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`;
 
 // List rendering rules for MediaWiki format
 md.renderer.rules.bullet_list_open = () => '';
@@ -322,6 +322,22 @@ export const processTemplates = (content) => {
   });
 };
 
+export const processCode = (content) => {
+  // Handle multiline code blocks
+  content = content.replace(/```([\s\S]*?)```/g, (match, code) => {
+    // Remove the first newline if it exists
+    code = code.replace(/^\n/, '');
+    // Remove the last newline if it exists
+    code = code.replace(/\n$/, '');
+    return `<pre>${code}</pre>`;
+  });
+  return content;
+};
+
+export const processInlineCode = (content) => {
+  return content.replace(/`([^`]+)`/g, '<code>$1</code>');
+};
+
 // Helper functions for content detection
 export const contentStartsWith = {
   list: (content) => content.match(/^([-*]|\d+\.)\s+/),
@@ -355,6 +371,10 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
   // First process templates and links
   content = processTemplates(content);
   content = processLinks(content);
+
+  // Process code blocks before other formatting
+  content = processCode(content);
+  content = processInlineCode(content);
 
   // Process headers
   content = processHeadings(content);
