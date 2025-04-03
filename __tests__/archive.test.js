@@ -60,7 +60,7 @@ describe('Message Formatting', () => {
         timestamp: '2025-03-21T21:36:27.000Z'
       };
       expect(formatMessageToWikitext(message, authors, false, true)).toBe(
-        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=\'\'Forwarded:\'\'\n<blockquote>This is a forwarded message</blockquote>}}'
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=<blockquote>\'\'Forwarded:\'\'\nThis is a forwarded message</blockquote>}}'
       );
     });
 
@@ -71,7 +71,7 @@ describe('Message Formatting', () => {
         timestamp: '2025-03-21T21:36:27.000Z'
       };
       expect(formatMessageToWikitext(message, authors, true, true)).toBe(
-        '{{DiscordLog2|class=ping reply|1=Ironwestie|2=\'\'Forwarded:\'\'\n<blockquote>This is a reply+forwarded message</blockquote>}}'
+        '{{DiscordLog2|class=ping reply|1=Ironwestie|2=<blockquote>\'\'Forwarded:\'\'\nThis is a reply+forwarded message</blockquote>}}'
       );
     });
 
@@ -246,7 +246,7 @@ describe('Message Formatting', () => {
         }
       };
       expect(formatMessageWithContext(message, authors)).toBe(
-        '{{DiscordLog2|class=ping reply|1=TestUser|2=\'\'Forwarded:\'\'\n<blockquote>Original forwarded content</blockquote>}}\n' +
+        '{{DiscordLog2|class=ping reply|1=TestUser|2=<blockquote>\'\'Forwarded:\'\'\nOriginal forwarded content</blockquote>}}\n' +
         '{{DiscordLog2|t= 21:36|1=Ironwestie|2=This is a reply to a forwarded message}}'
       );
     });
@@ -277,7 +277,7 @@ describe('Message Formatting', () => {
         }]
       };
       expect(formatMessageWithContext(message, authors)).toBe(
-        '{{DiscordLog2|t= 21:35|1=Ironwestie|2=\'\'Forwarded:\'\'\n<blockquote>Original message being forwarded</blockquote>}}'
+        '{{DiscordLog2|t= 21:35|1=Ironwestie|2=<blockquote>\'\'Forwarded:\'\'\nOriginal message being forwarded</blockquote>}}'
       );
     });
 

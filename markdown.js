@@ -469,7 +469,7 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
     });
 
   if (forwarded) {
-    content = `<blockquote>${content}</blockquote>`;
+    content = `<blockquote>''Forwarded:''\n${content}</blockquote>`;
   } else if (startsWithList) {
     content = '\n' + content;
   }

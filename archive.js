@@ -43,11 +43,7 @@ export function formatMessageToWikitext (message, authors, reply = false, forwar
 
     if (message.content) {
       const wikitextContent = convertDiscordToWikitext(message.content, authors, forwarded);
-      if (forwarded) {
-        parts.push(`2=''Forwarded:''\n${wikitextContent}`);
-      } else {
-        parts.push(`2=${wikitextContent}`);
-      }
+      parts.push(`2=${wikitextContent}`);
     } else if (message.type === 6) { // Pin message
       // Pin messages have no content, so we need to add the message ourselves
       parts.push(`2=pinned '''a message''' to this channel. See all '''pinned messages'''`);
