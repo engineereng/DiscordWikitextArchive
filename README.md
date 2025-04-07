@@ -38,7 +38,7 @@ This project was born out of a need to streamline the logging process for a popu
 
 ## Setup and Commands
 
-For a **full list of commands** and detailed setup instructions, please refer to our [**Documentation Page**](commands-and-setup.md). This includes step-by-step guides on how to install, configure, and use the bot effectively.
+For a **full list of commands** and detailed setup instructions, please refer to our [**Documentation Page**](/docs/commands-and-setup.md). This includes step-by-step guides on how to install, configure, and use the bot effectively.
 
 ## Contributing
 
