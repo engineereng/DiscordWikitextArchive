@@ -6,7 +6,7 @@ import {
   InteractionResponseFlags,
   verifyKeyMiddleware,
 } from 'discord-interactions';
-import { getRandomEmoji } from './utils.js';
+import { getRandomEmoji, logCommandUsage } from './utils.js';
 import {
   formatMessagesWithContext,
   readDiscordThread,
@@ -32,6 +32,9 @@ const PORT = process.env.PORT || 3000;
  * Parse request body and verifies incoming requests using discord-interactions package
  */
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
+  console.log('Received request to /interactions endpoint');
+  console.log('Request type:', req.body.type);
+
   // Interaction type and data
   const { type, data, channel } = req.body;
 
@@ -39,7 +42,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
    * Handle verification requests
    */
   if (type === InteractionType.PING) {
-    return res.send({ type: InteractionResponseType.PONG });
+    console.log('Received PING request from Discord - attempting verification');
+    const response = { type: InteractionResponseType.PONG };
+    console.log('Sending PONG response:', response);
+    return res.send(response);
   }
 
   /**
@@ -48,6 +54,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
    */
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name, options } = data;
+    const timestamp = new Date().toISOString();
+    const user = req.body.member.user;
+
+    // Log the command usage
+    logCommandUsage(user, name, timestamp);
 
     // "test" command
     if (name === 'test') {

@@ -34,7 +34,7 @@ export function formatMessageToWikitext (message, authors, reply = false, forwar
 
     let authorWikiAccount = authors.find(author => author.memberId === message.author.id)
     if (!authorWikiAccount) {
-        console.log(`Couldn't find message author: ${message.author.username}`);
+        console.error(`Couldn't find message author: ${message.author.username}`);
         authorWikiAccount = message.author.username;
     } else {
         authorWikiAccount = authorWikiAccount.wikiAccount;

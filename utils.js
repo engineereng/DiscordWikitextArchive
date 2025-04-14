@@ -45,3 +45,22 @@ export function getRandomEmoji() {
 export function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
+
+/**
+ * Logs command usage to the console
+ * @param {Object} user - The user who ran the command
+ * @param {string} command - The command that was run
+ * @param {string} timestamp - The UTC timestamp when the command was run
+ */
+export function logCommandUsage(user, command, timestamp) {
+  const logEntry = {
+    userId: user.id,
+    username: user.username,
+    nickname: user.nickname || 'No nickname',
+    command: command,
+    timestamp: timestamp
+  };
+
+  // Log as JSON string for better parsing in PM2 logs
+  console.log(`[COMMAND_USAGE] ${JSON.stringify(logEntry)}`);
+}
