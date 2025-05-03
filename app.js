@@ -550,7 +550,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
 
       // log discord response
-      console.log("Discord response:", response);
+      // console.log("Discord response:", response);
 
       return;
     }
