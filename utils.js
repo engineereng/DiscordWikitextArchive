@@ -48,19 +48,16 @@ export function capitalize(str) {
 
 /**
  * Logs command usage to the console
+ * @param {string} timestamp - The UTC timestamp when the command was run
  * @param {Object} user - The user who ran the command
  * @param {string} command - The command that was run
- * @param {string} timestamp - The UTC timestamp when the command was run
+ * @param {Object} options - The command options
+ * @param {Object} channel - The channel where the command was run
  */
-export function logCommandUsage(user, command, timestamp) {
-  const logEntry = {
-    userId: user.id,
-    username: user.username,
-    nickname: user.nickname || 'No nickname',
-    command: command,
-    timestamp: timestamp
-  };
-
-  // Log as JSON string for better parsing in PM2 logs
-  console.log(`[COMMAND_USAGE] ${JSON.stringify(logEntry)}`);
+export function logCommandUsage(timestamp, user, command, options, channel) {
+  if (options.length > 0) {
+    console.log(`[${timestamp}] ${user.username} (${user.id}) used /${command} with options: ${JSON.stringify(options)} in channel "${channel.name}" (${channel.id})`);
+  } else {
+    console.log(`[${timestamp}] ${user.username} (${user.id}) used /${command} in channel "${channel.name}" (${channel.id})`);
+  }
 }

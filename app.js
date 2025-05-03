@@ -58,7 +58,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     const user = req.body.member.user;
 
     // Log the command usage
-    logCommandUsage(user, name, timestamp);
+    logCommandUsage(timestamp, user, name, options, channel);
 
     // "test" command
     if (name === 'test') {

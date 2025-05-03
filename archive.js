@@ -84,7 +84,6 @@ export async function readDiscordThread(threadId) {
     const limit = 100; // Discord's maximum limit per request
     let page = 1;
     const delay = 1000; // 1 second delay between requests to be safe
-    let estimatedTotal = 0; // Will be set after first page
 
     while (true) {
         // Build the URL with pagination parameters
@@ -108,24 +107,8 @@ export async function readDiscordThread(threadId) {
         // Add messages to our collection
         allMessages = allMessages.concat(messages);
 
-        // After first page, estimate total messages based on message IDs
-        if (page === 1) {
-            // Get the first and last message IDs from the first page
-            const firstId = messages[0].id;
-            const lastId = messages[messages.length - 1].id;
-            // Discord message IDs are roughly sequential, so we can estimate
-            // This is a rough estimate but gives us a starting point
-            estimatedTotal = Math.ceil((parseInt(firstId) - parseInt(lastId)) / 1000) * 100;
-        }
-
-        // Calculate progress percentage
-        let progress = 0;
-        if (estimatedTotal > 0) {
-            progress = Math.min(100, Math.round((allMessages.length / estimatedTotal) * 100));
-        }
-
         // Show progress with percentage
-        console.log(`Fetched page ${page}: ${messages.length} messages (Total: ${allMessages.length}${estimatedTotal > 0 ? `, ${progress}%` : ''})`);
+        console.log(`Fetched page ${page}: ${messages.length} messages`);
 
         // If we got less than the limit, we've reached the end
         if (messages.length < limit) {
