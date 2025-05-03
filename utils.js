@@ -51,11 +51,11 @@ export function capitalize(str) {
  * @param {string} timestamp - The UTC timestamp when the command was run
  * @param {Object} user - The user who ran the command
  * @param {string} command - The command that was run
- * @param {Object} options - The command options
+ * @param {Object} options - The command options (can be null)
  * @param {Object} channel - The channel where the command was run
  */
 export function logCommandUsage(timestamp, user, command, options, channel) {
-  if (options.length > 0) {
+  if (options && options.length > 0) {
     console.log(`[${timestamp}] ${user.username} (${user.id}) used /${command} with options: ${JSON.stringify(options)} in channel "${channel.name}" (${channel.id})`);
   } else {
     console.log(`[${timestamp}] ${user.username} (${user.id}) used /${command} in channel "${channel.name}" (${channel.id})`);
