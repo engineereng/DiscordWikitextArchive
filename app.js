@@ -203,6 +203,27 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           body: formData
         });
 
+        // If there are unverified users, send a message to the channel
+        const unverifiedUsers = messages.filter((message, index, self) =>
+          !authors.find(author => author.memberId === message.author.id) &&
+          index === self.findIndex(m => m.author.id === message.author.id)
+        );
+        if (unverifiedUsers.length > 0) {
+          const unverifiedUsersList = unverifiedUsers.map(user => `${user.author.username} (${user.author.id})`).join('\n');
+          const unverifiedUsersNames = unverifiedUsers.map(user => user.author.username).join('\n');
+
+          console.error(`Found unverified users: ${unverifiedUsersList}`);
+          const unverifiedFormData = new FormData();
+          unverifiedFormData.append('payload_json', JSON.stringify({
+            content: "The following users are not verified:\n" + unverifiedUsersNames,
+            flags: InteractionResponseFlags.EPHEMERAL
+          }));
+          await fetch(webhookUrl, {
+            method: 'POST',
+            body: unverifiedFormData
+          });
+        }
+
         return;
 
       } catch (error) {
