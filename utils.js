@@ -56,8 +56,8 @@ export function capitalize(str) {
  */
 export function logCommandUsage(timestamp, user, command, options, channel) {
   if (options.length > 0) {
-    console.log(`[${timestamp}] ${user.username} (${user.id}) used /${command} with options: ${options} in channel ${channel.name} (${channel.id})`);
+    console.log(`[${timestamp}] ${user.username} (${user.id}) used /${command} with options: ${JSON.stringify(options)} in channel "${channel.name}" (${channel.id})`);
   } else {
-    console.log(`[${timestamp}] ${user.username} (${user.id}) used /${command} in channel ${channel.name} (${channel.id})`);
+    console.log(`[${timestamp}] ${user.username} (${user.id}) used /${command} in channel "${channel.name}" (${channel.id})`);
   }
 }
