@@ -374,6 +374,7 @@ export const convertDiscordToWikitext = (content, authors = [], forwarded = fals
   const startsWithList = contentStartsWith.list(content);
   // First process templates and links
   content = processTemplates(content);
+  content = content.replace(/(?<!\|)\|(?!\|)/g, '{{!}}'); // replace pipe characters with {{!}}
   content = processLinks(content);
 
   // Process code blocks before other formatting

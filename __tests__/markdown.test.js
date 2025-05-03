@@ -382,6 +382,15 @@ describe('Discord to Wikitext Conversion', () => {
     });
   });
 
+  describe('Pipe characters', () => {
+    test('Pipe character alone', () => {
+      const input = 'beforetext|aftertext';
+      expect(convertDiscordToWikitext(input, authors)).toBe(
+        'beforetext{{!}}aftertext'
+      );
+    });
+  });
+
   describe('Full Message Formatting', () => {
     test('Message with quotes', () => {
       const message = {
