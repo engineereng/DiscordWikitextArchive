@@ -1,8 +1,68 @@
 import { DiscordRequest } from './utils.js';
-import { promises as fs } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import Database from 'better-sqlite3';
 import {
   convertDiscordToWikitext
 } from './markdown.js';
+
+// Initialize SQLite database
+const db = new Database('bot.db');
+db.pragma('journal_mode = WAL');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS allowed_channels (channel_id TEXT PRIMARY KEY);
+  CREATE TABLE IF NOT EXISTS allowed_roles (role_id TEXT PRIMARY KEY);
+  CREATE TABLE IF NOT EXISTS verified_members (
+    member_id TEXT PRIMARY KEY,
+    wiki_account TEXT NOT NULL,
+    display_name TEXT
+  );
+  CREATE TABLE IF NOT EXISTS verified_roles (role_id TEXT PRIMARY KEY);
+`);
+
+// Migrate existing JSON files into SQLite on first run
+(function migrateFromJson() {
+  const migrate = db.transaction(() => {
+    // allowed_channels.json
+    if (db.prepare('SELECT COUNT(*) as c FROM allowed_channels').get().c === 0 && existsSync('allowed_channels.json')) {
+      const channels = JSON.parse(readFileSync('allowed_channels.json', 'utf8'));
+      const insert = db.prepare('INSERT OR IGNORE INTO allowed_channels (channel_id) VALUES (?)');
+      for (const id of channels) insert.run(id);
+      console.log(`Migrated ${channels.length} allowed channels from JSON`);
+    }
+
+    // allowed_roles.json
+    if (db.prepare('SELECT COUNT(*) as c FROM allowed_roles').get().c === 0 && existsSync('allowed_roles.json')) {
+      const roles = JSON.parse(readFileSync('allowed_roles.json', 'utf8'));
+      const insert = db.prepare('INSERT OR IGNORE INTO allowed_roles (role_id) VALUES (?)');
+      for (const id of roles) insert.run(id);
+      console.log(`Migrated ${roles.length} allowed roles from JSON`);
+    }
+
+    // verified_members.json
+    if (db.prepare('SELECT COUNT(*) as c FROM verified_members').get().c === 0 && existsSync('verified_members.json')) {
+      const members = JSON.parse(readFileSync('verified_members.json', 'utf8'));
+      const insert = db.prepare('INSERT OR IGNORE INTO verified_members (member_id, wiki_account, display_name) VALUES (?, ?, ?)');
+      for (const m of members) {
+        if (typeof m === 'string') {
+          insert.run(m, 'Unknown (Legacy)', null);
+        } else {
+          insert.run(m.memberId, m.wikiAccount, m.displayName || null);
+        }
+      }
+      console.log(`Migrated ${members.length} verified members from JSON`);
+    }
+
+    // verified_members_roles.json
+    if (db.prepare('SELECT COUNT(*) as c FROM verified_roles').get().c === 0 && existsSync('verified_members_roles.json')) {
+      const roles = JSON.parse(readFileSync('verified_members_roles.json', 'utf8'));
+      const insert = db.prepare('INSERT OR IGNORE INTO verified_roles (role_id) VALUES (?)');
+      for (const id of roles) insert.run(id);
+      console.log(`Migrated ${roles.length} verified roles from JSON`);
+    }
+  });
+  migrate();
+})();
 
 /**
    * Format a message to wikitext
@@ -129,73 +189,76 @@ export async function readDiscordThread(threadId) {
     return allMessages;
 }
 
-export async function getAllowedChannels() {
-    const storedChannels = await fs.readFile('allowed_channels.json', 'utf8');
-    return JSON.parse(storedChannels);
-  }
+export function getAllowedChannels() {
+    return db.prepare('SELECT channel_id FROM allowed_channels').all().map(r => r.channel_id);
+}
 
-export async function setAllowedChannels(channels) {
-    await fs.writeFile('allowed_channels.json', JSON.stringify(channels));
+export function setAllowedChannels(channels) {
+    db.transaction(() => {
+        db.prepare('DELETE FROM allowed_channels').run();
+        const insert = db.prepare('INSERT INTO allowed_channels (channel_id) VALUES (?)');
+        for (const id of channels) insert.run(id);
+    })();
 }
 
 /**
  * Get the roles that are allowed to archive threads
  * @returns A JSON array of role IDs
  */
-export async function getAllowedRoles() {
-    const storedRoles = await fs.readFile('allowed_roles.json', 'utf8');
-    return JSON.parse(storedRoles);
+export function getAllowedRoles() {
+    return db.prepare('SELECT role_id FROM allowed_roles').all().map(r => r.role_id);
 }
 
 /**
  * Set the roles that are allowed to archive threads
  * @param {Array} roles A JSON array of role IDs
  */
-export async function setAllowedRoles(roles) {
-    await fs.writeFile('allowed_roles.json', JSON.stringify(roles));
+export function setAllowedRoles(roles) {
+    db.transaction(() => {
+        db.prepare('DELETE FROM allowed_roles').run();
+        const insert = db.prepare('INSERT INTO allowed_roles (role_id) VALUES (?)');
+        for (const id of roles) insert.run(id);
+    })();
 }
 
 /**
  * Get the members that are verified
  * @returns An array of objects containing member IDs and wiki accounts
  */
-export async function getVerifiedMembers() {
-    try {
-        const storedMembers = await fs.readFile('verified_members.json', 'utf8');
-        const members = JSON.parse(storedMembers);
-        // Handle legacy format (array of IDs) by converting to new format
-        if (members.length > 0 && typeof members[0] === 'string') {
-            return members.map(id => ({ memberId: id, wikiAccount: 'Unknown (Legacy)' }));
-        }
-        return members;
-    } catch (err) {
-        return [];
-    }
+export function getVerifiedMembers() {
+    return db.prepare('SELECT member_id AS memberId, wiki_account AS wikiAccount, display_name AS displayName FROM verified_members').all();
 }
 
 /**
  * Set the members that are verified
  * @param {Array} members An array of objects containing member IDs and wiki accounts
  */
-export async function setVerifiedMembers(members) {
-    await fs.writeFile('verified_members.json', JSON.stringify(members, null, 2));
+export function setVerifiedMembers(members) {
+    db.transaction(() => {
+        db.prepare('DELETE FROM verified_members').run();
+        const insert = db.prepare('INSERT INTO verified_members (member_id, wiki_account, display_name) VALUES (?, ?, ?)');
+        for (const m of members) insert.run(m.memberId, m.wikiAccount, m.displayName || null);
+    })();
 }
 
 /**
  * Get the roles that are given to verified members
  * @returns A JSON array of role IDs
  */
-export async function getVerifiedRoles() {
-    const storedRoles = await fs.readFile('verified_members_roles.json', 'utf8');
-    return JSON.parse(storedRoles);
+export function getVerifiedRoles() {
+    return db.prepare('SELECT role_id FROM verified_roles').all().map(r => r.role_id);
 }
 
 /**
  * Set the roles that are given to verified members
  * @param {Array} roles A JSON array of role IDs
  */
-export async function setVerifiedRoles(roles) {
-    await fs.writeFile('verified_members_roles.json', JSON.stringify(roles));
+export function setVerifiedRoles(roles) {
+    db.transaction(() => {
+        db.prepare('DELETE FROM verified_roles').run();
+        const insert = db.prepare('INSERT INTO verified_roles (role_id) VALUES (?)');
+        for (const id of roles) insert.run(id);
+    })();
 }
 
 /**

@@ -1,6 +1,8 @@
 node_modules
 .env
+bot.db*
 allowed_channels.json
 allowed_roles.json
 verified_members.json
+verified_members_roles.json
 verified_roles.json
