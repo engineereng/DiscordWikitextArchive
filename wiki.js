@@ -12,27 +12,34 @@ async function apiRequest(params, method = 'GET') {
   params.format = 'json';
   const url = new URL(WIKI_API_URL);
 
+  let res;
   if (method === 'GET') {
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.set(key, value);
     }
-    const res = await fetch(url.toString(), {
+    res = await fetch(url.toString(), {
       headers: { Cookie: cookies },
     });
-    updateCookies(res);
-    return res.json();
+  } else {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(params)) {
+      form.append(key, value);
+    }
+    res = await fetch(url.toString(), {
+      method: 'POST',
+      headers: { Cookie: cookies },
+      body: form,
+    });
   }
 
-  const body = new URLSearchParams(params);
-  const res = await fetch(url.toString(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Cookie: cookies,
-    },
-    body: body.toString(),
-  });
   updateCookies(res);
+
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('json')) {
+    const text = await res.text();
+    throw new Error(`Wiki API returned non-JSON (HTTP ${res.status}): ${text.slice(0, 200)}`);
+  }
+
   return res.json();
 }
 
