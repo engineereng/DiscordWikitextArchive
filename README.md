@@ -18,8 +18,9 @@ DiscordWikitextArchive is a Discord bot designed to archive specific discussion 
     - Best-effort vote counting with strikethrough crossout detection.
     - Threshold evaluation (75% majority, 7 voter minimum).
     - Preview of all planned changes with confirm/cancel buttons.
-    - Discord thread management (rename with `[CLOSED]`, lock).
-    - Wiki page edits via MediaWiki API: create log page, update archive, update proposals page, scaffold to-do and progress entries.
+    - Discord thread management: rename with `[CLOSED]`/`[NULL]` prefix, apply forum tag (approved/rejected/restructured/not enough votes/closed), archive, and lock.
+    - Wiki page edits via MediaWiki API: create log page, update archive, insert row in proposals table, scaffold to-do and progress entries.
+    - Links to all created/modified wiki pages in the result message.
 - **Privacy Controls**: Restricts commands to authorized roles and specific channels.
 - **Participant Mapping**: Maps verified Discord members to their wiki accounts via `/verified_members`.
 
@@ -60,7 +61,7 @@ This project was born out of a need to streamline the logging process for a popu
 
 | Option | Required | Description |
 |---|---|---|
-| `vote_result` | Yes | Outcome: `support`, `oppose`, `restructure`, or `null` |
+| `vote_result` | Yes | Outcome: `support`, `oppose`, `restructure`, `null`, or `closed` |
 | `summary` | Yes | Short summary of the decision |
 | `support_count` | No | Override bot's detected support count |
 | `oppose_count` | No | Override bot's detected oppose count |
@@ -79,7 +80,7 @@ This project was born out of a need to streamline the logging process for a popu
 npm test
 ```
 
-Tests cover vote counting (using real wiki log fixtures), threshold evaluation, ordinal date formatting, and wikitext generation.
+Tests cover vote counting (using real wiki log fixtures), threshold evaluation, wikitext generation (proposals rows, archive entries, to-do/progress scaffolds), and ordinal date formatting.
 
 ## Project Structure
 

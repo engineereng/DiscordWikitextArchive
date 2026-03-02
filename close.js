@@ -324,32 +324,73 @@ export async function handleCloseButton(req, res) {
 }
 
 /**
+ * Map vote result to the expected forum tag name.
+ */
+const TAG_NAME_MAP = {
+  support: 'approved',
+  oppose: 'rejected',
+  restructure: 'restructured',
+  null: 'not enough votes',
+  closed: 'closed',
+};
+
+/**
+ * Map vote result to thread name prefix.
+ */
+const PREFIX_MAP = {
+  support: '[CLOSED]',
+  oppose: '[CLOSED]',
+  restructure: '[CLOSED]',
+  null: '[NULL]',
+  closed: '[CLOSED]',
+};
+
+/**
  * Execute all close actions (Discord + Wiki) and send a follow-up with results.
  */
 async function executeClose(data, followupUrl) {
   const results = [];
 
-  // 1. Rename thread
+  // 1. Fetch parent forum channel to get available tags
+  let tagId = null;
   try {
-    const newName = `[CLOSED] ${data.threadData.name}`.slice(0, 100);
-    await DiscordRequest(`channels/${data.channelId}`, {
-      method: 'PATCH',
-      body: { name: newName },
-    });
-    results.push('Thread renamed');
+    const parentId = data.threadData.parent_id;
+    const forumRes = await DiscordRequest(`channels/${parentId}`, { method: 'GET' });
+    const forumData = await forumRes.json();
+    const availableTags = forumData.available_tags || [];
+    const targetTagName = TAG_NAME_MAP[data.voteResult] || '';
+    const matchedTag = availableTags.find(
+      t => t.name.toLowerCase() === targetTagName.toLowerCase()
+    );
+    if (matchedTag) {
+      tagId = matchedTag.id;
+    } else {
+      results.push(`Tag "${targetTagName}" not found on forum (available: ${availableTags.map(t => t.name).join(', ')})`);
+    }
   } catch (e) {
-    results.push(`Thread rename failed: ${e.message}`);
+    results.push(`Failed to fetch forum tags: ${e.message}`);
   }
 
-  // 2. Lock thread
+  // 2. Rename, tag, archive, and lock thread in a single PATCH
   try {
+    const prefix = PREFIX_MAP[data.voteResult] || '[CLOSED]';
+    const newName = `${prefix} ${data.threadData.name}`.slice(0, 100);
+    const patchBody = {
+      name: newName,
+      archived: true,
+      locked: true,
+    };
+    if (tagId) {
+      patchBody.applied_tags = [tagId];
+    }
     await DiscordRequest(`channels/${data.channelId}`, {
       method: 'PATCH',
-      body: { locked: true },
+      body: patchBody,
     });
-    results.push('Thread locked');
+    const tagNote = tagId ? ', tagged' : '';
+    results.push(`Thread renamed, closed${tagNote}, and locked`);
   } catch (e) {
-    results.push(`Thread lock failed: ${e.message}`);
+    results.push(`Thread update failed: ${e.message}`);
   }
 
   // 3. Wiki edits -- login first

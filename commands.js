@@ -231,7 +231,8 @@ const CLOSE_COMMAND = {
         { name: "Support (passed)", value: "support" },
         { name: "Oppose (failed)", value: "oppose" },
         { name: "Restructure (passed with restructure)", value: "restructure" },
-        { name: "Null (not enough votes / premature close)", value: "null" },
+        { name: "Null (not enough votes)", value: "null" },
+        { name: "Closed (invalid/premature close)", value: "closed" },
       ]
     },
     {

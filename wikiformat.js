@@ -44,11 +44,13 @@ export function archiveAnchor(day, subject) {
 export function proposalsPageRow({ subject, day, proposer, startDate, endDate, voteResult }) {
   const anchor = archiveAnchor(day, subject);
 
-  const resultCell = voteResult === 'null'
-    ? 'Null'
+  const isNull = voteResult === 'null' || voteResult === 'closed';
+
+  const resultCell = isNull
+    ? (voteResult === 'closed' ? 'Closed' : 'Null')
     : `{{Icon|Voting-${voteResult}.svg}} [[/Archive#${anchor}|Summary]]`;
 
-  const logLink = voteResult === 'null'
+  const logLink = isNull
     ? subject
     : `[[/Log/${toOrdinal(day)}: ${subject}|${subject}]]`;
 
@@ -78,8 +80,9 @@ export function archiveEntry({ subject, day, summary, voteResult, supportCount, 
   const heading = `==== ${toOrdinal(day)}: ${subject} ====`;
 
   let bullet;
-  if (voteResult === 'null') {
-    bullet = `*Not enough votes (${total}/7) - proposal nulled.`;
+  if (voteResult === 'null' || voteResult === 'closed') {
+    const reason = voteResult === 'closed' ? 'proposal closed.' : 'proposal nulled.';
+    bullet = `*Not enough votes (${total}/7) - ${reason}`;
   } else {
     bullet = `*${summary} {{VoteSummary|${supportCount}|${opposeCount}|${restructureCount}}}`;
   }
