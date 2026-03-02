@@ -6,6 +6,7 @@ const WIKI_PASSWORD = process.env.WIKI_PASSWORD;
 
 let cookies = '';
 let csrfToken = null;
+let loggedIn = false;
 
 async function apiRequest(params, method = 'GET') {
   params.format = 'json';
@@ -47,6 +48,8 @@ function updateCookies(res) {
 }
 
 export async function wikiLogin() {
+  if (loggedIn) return;
+
   if (!WIKI_USERNAME || !WIKI_PASSWORD) {
     throw new Error('WIKI_USERNAME and WIKI_PASSWORD must be set in .env');
   }
@@ -72,6 +75,7 @@ export async function wikiLogin() {
   }
 
   console.log(`Logged in to wiki as ${loginData.login.lgusername}`);
+  loggedIn = true;
   csrfToken = null;
   return loginData;
 }
