@@ -136,12 +136,10 @@ async function processClose({ options, channelId, token, webhookUrl }) {
 
   // Format dates
   const day = startDate.getUTCDate();
-  const startDateStr = startDate.toLocaleDateString('en-US', {
-    month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
-  });
-  const endDateStr = new Date().toLocaleDateString('en-US', {
-    month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
-  });
+  const now = new Date();
+  const shortDate = (d) => `${d.getUTCMonth() + 1}/${d.getUTCDate()}/${d.getUTCFullYear()}`;
+  const startDateStr = shortDate(startDate);
+  const endDateStr = shortDate(now);
   const currentDateStr = endDateStr;
 
   // Generate archive wikitext
@@ -336,11 +334,14 @@ export async function handleCloseButton(req, res) {
       return;
     }
 
+    const wikiBase = process.env.WIKI_API_URL.replace('/w/api.php', '/wiki/');
+    const wikiLink = (title) => `${wikiBase}${encodeURIComponent(title).replace(/%2F/g, '/').replace(/%3A/g, ':')}`;
+
     // 4. Create log page
     try {
       const logTitle = logPageTitle(data.day, data.subject);
       await wikiEditPage(logTitle, data.archiveWikitext, `Creating log page for proposal: ${data.subject}`);
-      results.push(`Log page created: ${logTitle}`);
+      results.push(`[Log page created](${wikiLink(logTitle)})`);
     } catch (e) {
       results.push(`Log page creation failed: ${e.message}`);
     }
@@ -356,12 +357,14 @@ export async function handleCloseButton(req, res) {
         opposeCount: data.opposeCount,
         restructureCount: data.restructureCount,
       });
+      const archiveTitle = 'SiIvaGunner Wiki:Meme discussion/Archive';
       await wikiAppendToPage(
-        'SiIvaGunner Wiki:Meme discussion/Archive',
+        archiveTitle,
         '\n\n' + entry,
         `Adding archive entry for: ${data.subject}`,
       );
-      results.push('Archive page updated');
+      const anchor = archiveAnchor(data.day, data.subject);
+      results.push(`[Archive page updated](${wikiLink(archiveTitle)}#${encodeURIComponent(anchor)})`);
     } catch (e) {
       results.push(`Archive update failed: ${e.message}`);
     }
@@ -379,17 +382,28 @@ export async function handleCloseButton(req, res) {
 
       const proposalsContent = await wikiReadPage('SiIvaGunner Wiki:Meme discussion');
       if (proposalsContent) {
-        // Find the Ended table and append the row before the table's closing |}
-        // This is a best-effort approach -- the human can fix it if needed
-        const endedTablePattern = /(\{\|[^\n]*\n(?:.*\n)*?)((?=\|\}))/;
-        const updated = proposalsContent + '\n'; // fallback: append if pattern not found
-        // For now, append as a comment for human to place correctly
-        await wikiAppendToPage(
-          'SiIvaGunner Wiki:Meme discussion',
-          `\n<!-- Bot: New ended proposal row -->\n<!-- ${row} -->`,
-          `Closing proposal: ${data.subject} (${data.voteResult})`,
-        );
-        results.push('Proposals page updated (row appended as comment for human placement)');
+        const marker = '<!--New row goes here-->';
+        const markerIndex = proposalsContent.indexOf(marker);
+
+        if (markerIndex !== -1) {
+          const newContent = proposalsContent.slice(0, markerIndex)
+            + `|-\n${row}\n${marker}`
+            + proposalsContent.slice(markerIndex + marker.length);
+
+          await wikiEditPage(
+            'SiIvaGunner Wiki:Meme discussion',
+            newContent,
+            `Closing proposal: ${data.subject} (${data.voteResult})`,
+          );
+          results.push(`[Proposals page updated](${wikiLink('SiIvaGunner Wiki:Meme discussion')})`);
+        } else {
+          await wikiAppendToPage(
+            'SiIvaGunner Wiki:Meme discussion',
+            `\n|-\n${row}`,
+            `Closing proposal: ${data.subject} (${data.voteResult})`,
+          );
+          results.push(`[Proposals page updated](${wikiLink('SiIvaGunner Wiki:Meme discussion')}) (marker not found, row appended)`);
+        }
       }
     } catch (e) {
       results.push(`Proposals page update failed: ${e.message}`);
@@ -408,7 +422,7 @@ export async function handleCloseButton(req, res) {
           `\n|-\n${todo}`,
           `Adding to-do scaffold for: ${data.subject}`,
         );
-        results.push('To-do list scaffold added');
+        results.push(`[To-do list scaffold added](${wikiLink('SiIvaGunner Wiki:Meme discussion/Meme discussion to-do list')})`);
       } catch (e) {
         results.push(`To-do scaffold failed: ${e.message}`);
       }
@@ -425,7 +439,7 @@ export async function handleCloseButton(req, res) {
           `\n|-\n${progress}`,
           `Adding progress scaffold for: ${data.subject}`,
         );
-        results.push('Progress page scaffold added');
+        results.push(`[Progress page scaffold added](${wikiLink('SiIvaGunner Wiki:Meme discussion/Progress')})`);
       } catch (e) {
         results.push(`Progress scaffold failed: ${e.message}`);
       }

@@ -31,17 +31,6 @@ export function archiveAnchor(day, subject) {
 }
 
 /**
- * Format a percentage to one decimal place.
- * @param {number} count
- * @param {number} total
- * @returns {string}
- */
-function pct(count, total) {
-  if (total === 0) return '0%';
-  return `${((count / total) * 100).toFixed(1)}%`;
-}
-
-/**
  * Generate a proposals-page row for the Ended table.
  * @param {object} opts
  * @param {string} opts.subject
@@ -54,17 +43,22 @@ function pct(count, total) {
  */
 export function proposalsPageRow({ subject, day, proposer, startDate, endDate, voteResult }) {
   const anchor = archiveAnchor(day, subject);
-  const logTitle = logPageTitle(day, subject);
 
-  if (voteResult === 'null') {
-    return `| ${subject} || [[User:${proposer}|${proposer}]] || ${startDate} || ${endDate} || Null`;
-  }
+  const resultCell = voteResult === 'null'
+    ? 'Null'
+    : `{{Icon|Voting-${voteResult}.svg}} [[/Archive#${anchor}|Summary]]`;
 
-  const emojiFile = voteResult === 'support' ? 'Voting-support.svg'
-    : voteResult === 'oppose' ? 'Voting-oppose.svg'
-    : 'Voting-restructure.svg';
+  const logLink = voteResult === 'null'
+    ? subject
+    : `[[/Log/${toOrdinal(day)}: ${subject}|${subject}]]`;
 
-  return `| [[${logTitle}|${subject}]] || [[User:${proposer}|${proposer}]] || ${startDate} || ${endDate} || [[File:${emojiFile}|20px]] [[SiIvaGunner Wiki:Meme discussion/Archive#${anchor}|Summary]]`;
+  return [
+    `|${logLink}`,
+    `|[[User:${proposer}|${proposer}]]`,
+    `|${startDate}`,
+    `|${endDate}`,
+    `|${resultCell}`,
+  ].join('\n');
 }
 
 /**
@@ -81,24 +75,16 @@ export function proposalsPageRow({ subject, day, proposer, startDate, endDate, v
  */
 export function archiveEntry({ subject, day, summary, voteResult, supportCount, opposeCount, restructureCount }) {
   const total = supportCount + opposeCount + restructureCount;
-  const heading = `#### ${toOrdinal(day)}: **${subject}**`;
+  const heading = `==== ${toOrdinal(day)}: ${subject} ====`;
 
-  let tallySummary;
+  let bullet;
   if (voteResult === 'null') {
-    const parts = [];
-    if (supportCount > 0) parts.push(`support: ${supportCount} (${pct(supportCount, total)})`);
-    if (restructureCount > 0) parts.push(`restructure ${restructureCount} (${pct(restructureCount, total)})`);
-    if (opposeCount > 0) parts.push(`oppose ${opposeCount} (${pct(opposeCount, total)})`);
-    tallySummary = `* Not enough votes were cast for a decision to be made. (${total} total: ${parts.join(', ')})`;
+    bullet = `*Not enough votes (${total}/7) - proposal nulled.`;
   } else {
-    const parts = [];
-    if (supportCount > 0) parts.push(`support: ${supportCount} (${pct(supportCount, total)})`);
-    if (restructureCount > 0) parts.push(`restructure ${restructureCount} (${pct(restructureCount, total)})`);
-    if (opposeCount > 0) parts.push(`oppose ${opposeCount} (${pct(opposeCount, total)})`);
-    tallySummary = `* ${summary} (${total} total: ${parts.join(', ')})`;
+    bullet = `*${summary} {{VoteSummary|${supportCount}|${opposeCount}|${restructureCount}}}`;
   }
 
-  return `${heading}\n\n${tallySummary}`;
+  return `${heading}\n${bullet}`;
 }
 
 /**

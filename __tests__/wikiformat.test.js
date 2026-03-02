@@ -81,31 +81,38 @@ describe('proposalsPageRow', () => {
 
   test('support row', () => {
     const row = proposalsPageRow({ ...baseOpts, voteResult: 'support' });
-    expect(row).toContain('[[SiIvaGunner Wiki:Meme discussion/Log/14th: Teach Me How to Dougie|Teach Me How to Dougie]]');
-    expect(row).toContain('[[User:Nuc1eusknight|Nuc1eusknight]]');
-    expect(row).toContain('Voting-support.svg');
-    expect(row).toContain('Summary]]');
+    expect(row).toContain('|[[/Log/14th: Teach Me How to Dougie|Teach Me How to Dougie]]');
+    expect(row).toContain('|[[User:Nuc1eusknight|Nuc1eusknight]]');
+    expect(row).toContain('{{Icon|Voting-support.svg}}');
+    expect(row).toContain('[[/Archive#14th: Teach Me How to Dougie|Summary]]');
   });
 
   test('oppose row', () => {
     const row = proposalsPageRow({ ...baseOpts, voteResult: 'oppose' });
-    expect(row).toContain('Voting-oppose.svg');
+    expect(row).toContain('{{Icon|Voting-oppose.svg}}');
   });
 
   test('restructure row', () => {
     const row = proposalsPageRow({ ...baseOpts, voteResult: 'restructure' });
-    expect(row).toContain('Voting-restructure.svg');
+    expect(row).toContain('{{Icon|Voting-restructure.svg}}');
   });
 
   test('null row has no log link', () => {
     const row = proposalsPageRow({ ...baseOpts, voteResult: 'null' });
-    expect(row).not.toContain('[[SiIvaGunner Wiki:Meme discussion/Log/');
+    expect(row).not.toContain('[[/Log/');
     expect(row).toContain('Null');
+  });
+
+  test('each cell is on its own line', () => {
+    const row = proposalsPageRow({ ...baseOpts, voteResult: 'support' });
+    const lines = row.split('\n');
+    expect(lines).toHaveLength(5);
+    expect(lines.every(l => l.startsWith('|'))).toBe(true);
   });
 });
 
 describe('archiveEntry', () => {
-  test('generates support entry with vote totals', () => {
+  test('generates support entry with VoteSummary template', () => {
     const entry = archiveEntry({
       subject: 'Teach Me How to Dougie',
       day: 14,
@@ -115,10 +122,10 @@ describe('archiveEntry', () => {
       opposeCount: 2,
       restructureCount: 0,
     });
-    expect(entry).toContain('#### 14th: **Teach Me How to Dougie**');
-    expect(entry).toContain('15 total');
-    expect(entry).toContain('support: 13');
-    expect(entry).toContain('oppose 2');
+    expect(entry).toBe(
+      '==== 14th: Teach Me How to Dougie ====\n' +
+      '*We will make a meme page and category for Teach Me How to Dougie. {{VoteSummary|13|2|0}}'
+    );
   });
 
   test('generates null entry', () => {
@@ -131,11 +138,13 @@ describe('archiveEntry', () => {
       opposeCount: 2,
       restructureCount: 0,
     });
-    expect(entry).toContain('Not enough votes were cast');
-    expect(entry).toContain('6 total');
+    expect(entry).toBe(
+      '==== 11th: Tally Hall ====\n' +
+      '*Not enough votes (6/7) - proposal nulled.'
+    );
   });
 
-  test('includes restructure in tally', () => {
+  test('includes restructure in VoteSummary', () => {
     const entry = archiveEntry({
       subject: 'Meatball Parade',
       day: 22,
@@ -145,8 +154,7 @@ describe('archiveEntry', () => {
       opposeCount: 2,
       restructureCount: 3,
     });
-    expect(entry).toContain('13 total');
-    expect(entry).toContain('restructure 3');
+    expect(entry).toContain('{{VoteSummary|8|2|3}}');
   });
 });
 
