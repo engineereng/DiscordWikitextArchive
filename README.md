@@ -43,7 +43,7 @@ This project was born out of a need to streamline the logging process for a popu
 | `PUBLIC_KEY` | Discord public key for interaction verification |
 | `GUILD_ID` | Discord server (guild) ID |
 | `WIKI_API_URL` | MediaWiki API endpoint (e.g. `https://siivagunner.wiki/w/api.php`) |
-| `WIKI_USERNAME` | MediaWiki bot account username |
+| `WIKI_USERNAME` | MediaWiki bot password login name (e.g. `Username@BotPasswordName`) |
 | `WIKI_PASSWORD` | MediaWiki bot password |
 
 ## Commands
@@ -73,6 +73,27 @@ This project was born out of a need to streamline the logging process for a popu
 2. Copy `.env.example` or create `.env` with the variables listed above.
 3. Register commands with Discord: `npm run register`.
 4. Start the bot: `npm start` (or `npm run dev` for development with auto-reload).
+
+### Discord Bot Permissions
+
+The bot requires the following OAuth2 scopes and permissions:
+
+- **Scopes**: `bot`, `applications.commands`
+- **Permissions**: Manage Roles, Manage Threads, Read Message History, Send Messages, View Channels
+
+For `/close` to rename, tag, archive, and lock threads, the bot must have **Manage Threads** access on the specific forum channel (check channel-level permission overrides).
+
+### Wiki Page Markers
+
+The `/close` command inserts rows into wiki tables by looking for specific HTML comment markers. Add these to the relevant wiki pages:
+
+- **Proposals page** (`SiIvaGunner Wiki:Meme discussion`): `<!--New row goes here-->` before the table's closing `|}`
+- **To-do list** (`SiIvaGunner Wiki:Meme discussion/Meme discussion to-do list`): `<!-- Scaffolding` before the scaffold comment block
+- **Progress page** (`SiIvaGunner Wiki:Meme discussion/Progress`): `<!-- ...New entries...` before the new entries comment block
+
+### Forum Tags
+
+The bot applies forum tags based on vote result. The forum channel should have tags named (case-insensitive): **approved**, **rejected**, **restructured**, **not enough votes**, **closed**.
 
 ## Testing
 
