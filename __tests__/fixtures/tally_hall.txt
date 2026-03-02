@@ -1,0 +1,42 @@
+<templatestyles src="Template:DiscordLog/styles.css"/>
+{{DiscordLog2|class=date-separator|t=December 11, 2024}}
+{{DiscordLog2|t= 03:44|1=Eden342|2=[[File:Voting-support.svg|20px|link=]] Tally Hall is a band. I believe that the band as a whole has made enough appearances throughout SiIvaGunner to be considered a meme.
+
+The band first started receiving frequent rips during Season 5, mainly "Ruler of Everything" as it was a popular meme at the time. Later that season, a full channel event would happen too.
+
+After this event, the band and some member's side projects (mainly Miracle Musical) would still continue to see frequent use in both solo rips and medley rips containing channel memes. Currently, counting any side-projects the members have done, there are 102 rips, 99 not counting album tracks (a little over 60 not counting these side-projects). This large amount makes the band feel more notable to the channel to me.
+
+The band was also referenced in the 7th anniversary collage, which already represents many other memes. It also has a joke game titled ''Banana'' that occasionally gets ripped to reference the song "Banana Man".
+[[User:Eden342/Tally Hall|Draft page I made for this topic, also includes a playlist of all rips featuring the band.]]}}
+{{DiscordLog2|t= 03:51|1=TurretBot|2={{t|f|Miracle Musical}} isn't a valid link}}
+{{DiscordLog2|t= 03:51|1=Eden342|2=forgot i added that let me remove it}}
+{{DiscordLog2|t= 03:52|1=Mick the Squirrel|2=is the ghost and molly magee supposed to be included in this as a side project}}
+{{DiscordLog2|t= 03:52|1=Eden342|2=yeah, just forgot to add those to my playlist}}
+{{DiscordLog2|t= 03:52|1=Mick the Squirrel|2=theres rips by individual beatles members that arent in the category, maybe we should stay consistent with this}}
+{{DiscordLog2|t= 03:53|1=Eden342|2=i would be fine with that}}
+{{DiscordLog2|t= 05:21|1=CorbCreates|2=I am struggling to figure out whether I should support this or not, because I know tally hall is used a lot, but its also simply due to the band being popular in smaller music circles like ours. Should any joke source that's generically popular be considered a meme? I wouldn't think so}}
+{{DiscordLog2|class=date-separator|t=December 12, 2024}}
+{{DiscordLog2|t= 12:22|1=Eden342|2=This is understandable and I do agree with that last part. It is mainly the pick up in usages in Season 5 (+ event) and the inclusion within the 7th anniversary collage that make me call this a meme even if it is a popular band.}}
+{{DiscordLog2|t= 12:22|1=Eden342|2=I kinda wanted to maybe restructure this so that only one of their songs is considered a meme, but I am not fully sure if that'd be allowed.}}
+{{DiscordLog2|class=date-separator|t=December 16, 2024}}
+{{DiscordLog2|t= 04:00|1=Mick the Squirrel|2=[[File:Voting-support.svg|20px|link=]] This seems harmless, high usage spread a few months prior and after the event seems to solidify it as something of value.}}
+{{DiscordLog2|t= 04:04|1=Notascryptic|2=[[File:Voting-support.svg|20px|link=]] Agree}}
+{{DiscordLog2|class=date-separator|t=December 17, 2024}}
+{{DiscordLog2|t= 14:19|1=Lollotheguy|2=[[File:Voting-support.svg|20px|link=]] I agree}}
+{{DiscordLog2|t= 14:27|1=CorbCreates|2=<s>I can't bring myself to support it for my reason above but I will vote neutral so if people want it, it can pass the number of votes requirement</s>}}
+{{DiscordLog2|t= 14:42|1=TurretBot|2=[[File:Voting-oppose.svg|20px|link=]] A minor bump in relevance that was not unique to siivagunner outside of one event doesn't justify a category catching strays indefinitely}}
+{{DiscordLog2|class=ping reply|1=CorbCreates|2=<s>I can't bring myself to support it for my reason above but I will vote neutral so if people want it, it can pass the number of votes requirement</s>}}
+{{DiscordLog2|t= 15:48|1=Mick the Squirrel|2=I should reiterate, within meme proposals, neutral votes only count for ''restructuring'' a proposal. If you do not have an opinion, this vote won't be counted.
+I decided on this because, in their default state, all neutral votes do is shift the vote percentage ''away'' from any true decision, and essentially count towards an opposition.
+True indifference should be communicated through the act of not voting at all.}}
+{{DiscordLog2|t= 15:49|1=CorbCreates|2=oh i forgot that, my bad}}
+{{DiscordLog2|t= 15:50|1=Mick the Squirrel|2=You're good, the way its designed is likely confusing in the first place.
+Changing the icon is one of my plans...}}
+{{DiscordLog2|t= 03:08|1=ThisGreenDingo|2=[[File:Voting-oppose.svg|20px|link=]] despite being in the 7th anniversary banner (a very good bit of evidence) i dont think theres a strong enough case, i dont think tally hall has been very impactful on siiva from personal experience}}
+{{DiscordLog2|class=date-separator|t=December 18, 2024}}
+{{DiscordLog2|t= 03:51|1=Eden342|2=[[User:Mick the Squirrel|Mick]] is it time}}
+{{DiscordLog2|class=ping reply|1=Eden342|2=[[User:Mick the Squirrel|Mick]] is it time}}
+{{DiscordLog2|t= 04:03|1=Mick the Squirrel|2=you want extension or no}}
+{{DiscordLog2|t= 04:03|1=Eden342|2=im fine with this not passing}}
+{{DiscordLog2|t= 04:04|1=Mick the Squirrel|2=Ok}}
+{{DiscordLog2|t= 04:05|1=Mick the Squirrel|2=Decision: '''Rejected''' (not enough votes)}}

@@ -21,6 +21,7 @@ import {
   addRoleToMember,
   getMemberInfo
 } from './archive.js';
+import { handleCloseCommand, handleCloseButton } from './close.js';
 
 // Create an express app
 const app = express();
@@ -379,6 +380,24 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
     }
 
+    if (name === 'close') {
+      // Check permissions
+      const allowedRoles = await getAllowedRoles();
+      const userRoles = req.body.member?.roles || [];
+      const hasPermission = allowedRoles.some(roleId => userRoles.includes(roleId));
+      if (!hasPermission) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.EPHEMERAL,
+            content: 'You do not have permission to close proposals. You need an allowed role.',
+          },
+        });
+      }
+
+      return handleCloseCommand(req, res);
+    }
+
     if (name === 'verified_members') {
       // Check if we have options
       if (!options || !options[0]) {
@@ -557,6 +576,21 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
     console.error(`unknown command: ${name}`);
     return res.status(400).json({ error: 'unknown command' });
+  }
+
+  /**
+   * Handle message component interactions (button clicks)
+   */
+  if (type === InteractionType.MESSAGE_COMPONENT) {
+    const customId = req.body.data.custom_id;
+
+    // Check if this is a close confirm/cancel button
+    if (customId.startsWith('close_confirm_') || customId.startsWith('close_cancel_')) {
+      return handleCloseButton(req, res);
+    }
+
+    console.error('unknown component interaction:', customId);
+    return res.status(400).json({ error: 'unknown component interaction' });
   }
 
   console.error('unknown interaction type', type);

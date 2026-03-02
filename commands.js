@@ -214,6 +214,53 @@ const VERIFIED_MEMBERS_COMMAND = {
     }
   ]
 }
-const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND, ALLOWED_CHANNELS_COMMAND, ALLOWED_ROLES_COMMAND, VERIFIED_MEMBERS_COMMAND];
+const CLOSE_COMMAND = {
+  name: "close",
+  description: "Close a meme proposal thread: count votes, archive, and update wiki pages",
+  type: 1,
+  integration_types: [0],
+  contexts: [0],
+  dm_permission: false,
+  options: [
+    {
+      name: "vote_result",
+      description: "The outcome of the proposal",
+      type: 3, // STRING
+      required: true,
+      choices: [
+        { name: "Support (passed)", value: "support" },
+        { name: "Oppose (failed)", value: "oppose" },
+        { name: "Restructure (passed with restructure)", value: "restructure" },
+        { name: "Null (not enough votes / premature close)", value: "null" },
+      ]
+    },
+    {
+      name: "summary",
+      description: "Short summary of the decision (e.g. 'We will create a meme page for X')",
+      type: 3, // STRING
+      required: true,
+    },
+    {
+      name: "support_count",
+      description: "Override the bot's detected support vote count",
+      type: 4, // INTEGER
+      required: false,
+    },
+    {
+      name: "oppose_count",
+      description: "Override the bot's detected oppose vote count",
+      type: 4, // INTEGER
+      required: false,
+    },
+    {
+      name: "restructure_count",
+      description: "Override the bot's detected total restructure vote count",
+      type: 4, // INTEGER
+      required: false,
+    },
+  ]
+};
+
+const ALL_COMMANDS = [TEST_COMMAND, ARCHIVE_COMMAND, ALLOWED_CHANNELS_COMMAND, ALLOWED_ROLES_COMMAND, VERIFIED_MEMBERS_COMMAND, CLOSE_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
