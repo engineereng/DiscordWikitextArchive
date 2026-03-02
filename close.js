@@ -292,7 +292,7 @@ export async function handleCloseButton(req, res) {
     type: 6, // DEFERRED_UPDATE_MESSAGE
   });
 
-  const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
+  const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
 
   try {
     const results = [];
@@ -329,7 +329,7 @@ export async function handleCloseButton(req, res) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: `Discord actions done, but wiki login failed:\n${results.join('\n')}\nError: ${e.message}`,
+          content: `**Proposal close partially failed.**\n\n${results.map(r => `• ${r}`).join('\n')}`,
           components: [],
         }),
       });
