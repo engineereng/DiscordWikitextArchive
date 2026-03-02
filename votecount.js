@@ -7,7 +7,7 @@
  * - Multiple votes per user (latest non-crossed-out wins)
  */
 
-const VOTE_EMOJI_PATTERN = /<:(?:Voting[_ ]?(support|oppose|restructure|neutral)):(\d+)>/gi;
+const VOTE_EMOJI_PATTERN = /<:(?:Voting[_ ]?)?(support|oppose|restructure|neutral):(\d+)>/gi;
 const STRIKETHROUGH_PATTERN = /~~([\s\S]*?)~~/g;
 
 /**

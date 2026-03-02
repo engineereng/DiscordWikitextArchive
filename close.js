@@ -48,13 +48,14 @@ function extractSubject(threadName) {
 }
 
 /**
- * Handle the /close command. Returns the initial response object for Discord.
- * The actual work happens asynchronously after the deferred response.
+ * Handle the /close command. Sends the deferred response immediately,
+ * then does all heavy work in a detached promise so Express returns right away.
  */
 export async function handleCloseCommand(req, res) {
   const { data, channel } = req.body;
   const { options } = data;
-  const { type: channelType, id: channelId } = channel;
+  const channelType = channel?.type;
+  const channelId = channel?.id;
 
   // Must be used inside a thread
   if (channelType !== 11) {
@@ -67,187 +68,194 @@ export async function handleCloseCommand(req, res) {
     });
   }
 
-  // Send deferred response
-  await res.send({
+  // Send deferred response immediately so Discord doesn't time out
+  res.send({
     type: 5, // DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
     data: { flags: 64 },
   });
 
-  const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
+  // Do all heavy work in a detached promise
+  const token = req.body.token;
+  const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${token}`;
 
-  try {
-    // Parse options
-    const voteResult = getOption(options, 'vote_result');
-    const summary = getOption(options, 'summary');
-    const supportOverride = getOption(options, 'support_count');
-    const opposeOverride = getOption(options, 'oppose_count');
-    const restructureOverride = getOption(options, 'restructure_count');
-
-    // Get thread data
-    const threadRes = await fetch(`https://discord.com/api/v10/channels/${channelId}`, {
-      headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
-    });
-    if (!threadRes.ok) throw new Error('Could not fetch thread data');
-    const threadData = await threadRes.json();
-
-    const subject = extractSubject(threadData.name);
-    const threadCreatorId = threadData.owner_id;
-    const startDate = new Date(threadData.thread_metadata?.create_timestamp || threadData.id);
-
-    // Read thread messages
-    const messages = await readDiscordThread(channelId);
-    const authors = await getVerifiedMembers();
-
-    // Count votes
-    const messagesOldestFirst = [...messages].reverse();
-    const voteData = countVotes(messagesOldestFirst);
-
-    // Apply overrides
-    const finalSupport = supportOverride ?? voteData.tally.support;
-    const finalOppose = opposeOverride ?? voteData.tally.oppose;
-    const finalRestructure = restructureOverride ?? voteData.tally.restructure;
-    const finalTotal = finalSupport + finalOppose + finalRestructure;
-
-    // Evaluate threshold
-    const threshold = evaluateThreshold(finalSupport, finalOppose, finalRestructure);
-
-    // Look up proposer's wiki account
-    const proposerWiki = lookupWikiAccount(authors, threadCreatorId);
-    const proposerDisplay = proposerWiki || `Unknown (Discord ID: ${threadCreatorId})`;
-
-    // Format dates
-    const day = startDate.getUTCDate();
-    const startDateStr = startDate.toLocaleDateString('en-US', {
-      month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
-    });
-    const endDateStr = new Date().toLocaleDateString('en-US', {
-      month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
-    });
-    const currentDateStr = endDateStr;
-
-    // Generate archive wikitext
-    const nonBotMessages = messagesOldestFirst.filter(m => !m.author.bot);
-    const archiveWikitext = `<templatestyles src="Template:DiscordLog/styles.css"/>\n` +
-      formatMessagesWithContext(nonBotMessages, authors);
-
-    // Build preview
-    let preview = '**Proposal Close Preview**\n\n';
-    preview += `**Subject:** ${subject}\n`;
-    preview += `**Proposer:** ${proposerDisplay}\n`;
-    preview += `**Start date:** ${startDateStr}\n`;
-    preview += `**End date:** ${endDateStr}\n`;
-    preview += `**Vote result:** ${voteResult}\n`;
-    preview += `**Summary:** ${summary}\n\n`;
-
-    preview += `**Vote Tally** (bot-detected → final):\n`;
-    preview += `  Support: ${voteData.tally.support}${supportOverride !== undefined ? ` → ${supportOverride}` : ''}\n`;
-    preview += `  Oppose: ${voteData.tally.oppose}${opposeOverride !== undefined ? ` → ${opposeOverride}` : ''}\n`;
-    preview += `  Restructure: ${voteData.tally.restructure}${restructureOverride !== undefined ? ` → ${restructureOverride}` : ''}\n`;
-    if (voteData.tally.neutral > 0) {
-      preview += `  Neutral: ${voteData.tally.neutral} (not counted toward total)\n`;
-    }
-    preview += `  **Total: ${finalTotal}**\n`;
-    preview += `  Bot suggestion: **${threshold.result}** (${threshold.reason})\n\n`;
-
-    if (voteData.ambiguous.length > 0) {
-      preview += `**⚠ Ambiguous voters** (crossed out with no replacement):\n`;
-      for (const a of voteData.ambiguous) {
-        preview += `  - ${a.username}\n`;
-      }
-      preview += '\n';
-    }
-
-    if (voteData.voters.restructure.length > 0) {
-      preview += `**Restructure voters** (human must group into options):\n`;
-      for (const v of voteData.voters.restructure) {
-        const snippet = v.messageContent.slice(0, 100).replace(/\n/g, ' ');
-        preview += `  - ${v.username}: ${snippet}...\n`;
-      }
-      preview += '\n';
-    }
-
-    if (!proposerWiki) {
-      preview += `**⚠ Warning:** Could not find wiki account for thread creator (${threadCreatorId}). The proposer column will show the Discord ID.\n\n`;
-    }
-
-    preview += '**Planned actions:**\n';
-    preview += `1. Rename thread to "[CLOSED] ${threadData.name}"\n`;
-    preview += `2. Lock thread\n`;
-    preview += `3. Create log page: \`${logPageTitle(day, subject)}\`\n`;
-    preview += `4. Update archive page\n`;
-    preview += `5. Update proposals page (Active → Ended)\n`;
-    if (voteResult === 'support' || voteResult === 'restructure') {
-      preview += `6. Create scaffold entry on to-do list\n`;
-      preview += `7. Create scaffold entry on progress page\n`;
-    }
-
-    // Store pending data
-    const confirmId = `close_confirm_${channelId}_${Date.now()}`;
-    const cancelId = `close_cancel_${channelId}_${Date.now()}`;
-
-    pendingCloses.set(confirmId, {
-      channelId,
-      threadData,
-      subject,
-      day,
-      proposer: proposerDisplay,
-      startDateStr,
-      endDateStr,
-      currentDateStr,
-      voteResult,
-      summary,
-      supportCount: finalSupport,
-      opposeCount: finalOppose,
-      restructureCount: finalRestructure,
-      archiveWikitext,
-      token: req.body.token,
-      cancelId,
-    });
-    pendingCloses.set(cancelId, { confirmId, type: 'cancel' });
-
-    // Auto-expire after 15 minutes
-    setTimeout(() => {
-      pendingCloses.delete(confirmId);
-      pendingCloses.delete(cancelId);
-    }, 15 * 60 * 1000);
-
-    // Send preview with buttons
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: preview,
-        flags: 64,
-        components: [{
-          type: 1, // ACTION_ROW
-          components: [
-            {
-              type: 2, // BUTTON
-              style: 3, // SUCCESS (green)
-              label: 'Confirm',
-              custom_id: confirmId,
-            },
-            {
-              type: 2,
-              style: 4, // DANGER (red)
-              label: 'Cancel',
-              custom_id: cancelId,
-            },
-          ],
-        }],
-      }),
-    });
-  } catch (error) {
+  processClose({ options, channelId, token, webhookUrl }).catch(error => {
     console.error('Error in /close command:', error);
-    await fetch(webhookUrl, {
+    fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content: `Error: ${error.message}`,
         flags: 64,
       }),
-    });
+    }).catch(e => console.error('Failed to send error follow-up:', e));
+  });
+}
+
+/**
+ * The actual close processing logic, runs after the deferred response is sent.
+ */
+async function processClose({ options, channelId, token, webhookUrl }) {
+  // Parse options
+  const voteResult = getOption(options, 'vote_result');
+  const summary = getOption(options, 'summary');
+  const supportOverride = getOption(options, 'support_count');
+  const opposeOverride = getOption(options, 'oppose_count');
+  const restructureOverride = getOption(options, 'restructure_count');
+
+  // Get thread data
+  const threadRes = await fetch(`https://discord.com/api/v10/channels/${channelId}`, {
+    headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+  });
+  if (!threadRes.ok) throw new Error('Could not fetch thread data');
+  const threadData = await threadRes.json();
+
+  const subject = extractSubject(threadData.name);
+  const threadCreatorId = threadData.owner_id;
+  const startDate = new Date(threadData.thread_metadata?.create_timestamp || threadData.id);
+
+  // Read thread messages
+  const messages = await readDiscordThread(channelId);
+  const authors = await getVerifiedMembers();
+
+  // Count votes
+  const messagesOldestFirst = [...messages].reverse();
+  const voteData = countVotes(messagesOldestFirst);
+
+  // Apply overrides
+  const finalSupport = supportOverride ?? voteData.tally.support;
+  const finalOppose = opposeOverride ?? voteData.tally.oppose;
+  const finalRestructure = restructureOverride ?? voteData.tally.restructure;
+  const finalTotal = finalSupport + finalOppose + finalRestructure;
+
+  // Evaluate threshold
+  const threshold = evaluateThreshold(finalSupport, finalOppose, finalRestructure);
+
+  // Look up proposer's wiki account
+  const proposerWiki = lookupWikiAccount(authors, threadCreatorId);
+  const proposerDisplay = proposerWiki || `Unknown (Discord ID: ${threadCreatorId})`;
+
+  // Format dates
+  const day = startDate.getUTCDate();
+  const startDateStr = startDate.toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+  });
+  const endDateStr = new Date().toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+  });
+  const currentDateStr = endDateStr;
+
+  // Generate archive wikitext
+  const nonBotMessages = messagesOldestFirst.filter(m => !m.author.bot);
+  const archiveWikitext = `<templatestyles src="Template:DiscordLog/styles.css"/>\n` +
+    formatMessagesWithContext(nonBotMessages, authors);
+
+  // Build preview
+  let preview = '**Proposal Close Preview**\n\n';
+  preview += `**Subject:** ${subject}\n`;
+  preview += `**Proposer:** ${proposerDisplay}\n`;
+  preview += `**Start date:** ${startDateStr}\n`;
+  preview += `**End date:** ${endDateStr}\n`;
+  preview += `**Vote result:** ${voteResult}\n`;
+  preview += `**Summary:** ${summary}\n\n`;
+
+  preview += `**Vote Tally** (bot-detected → final):\n`;
+  preview += `  Support: ${voteData.tally.support}${supportOverride !== undefined ? ` → ${supportOverride}` : ''}\n`;
+  preview += `  Oppose: ${voteData.tally.oppose}${opposeOverride !== undefined ? ` → ${opposeOverride}` : ''}\n`;
+  preview += `  Restructure: ${voteData.tally.restructure}${restructureOverride !== undefined ? ` → ${restructureOverride}` : ''}\n`;
+  if (voteData.tally.neutral > 0) {
+    preview += `  Neutral: ${voteData.tally.neutral} (not counted toward total)\n`;
   }
+  preview += `  **Total: ${finalTotal}**\n`;
+  preview += `  Bot suggestion: **${threshold.result}** (${threshold.reason})\n\n`;
+
+  if (voteData.ambiguous.length > 0) {
+    preview += `**Ambiguous voters** (crossed out with no replacement):\n`;
+    for (const a of voteData.ambiguous) {
+      preview += `  - ${a.username}\n`;
+    }
+    preview += '\n';
+  }
+
+  if (voteData.voters.restructure.length > 0) {
+    preview += `**Restructure voters** (human must group into options):\n`;
+    for (const v of voteData.voters.restructure) {
+      const snippet = v.messageContent.slice(0, 100).replace(/\n/g, ' ');
+      preview += `  - ${v.username}: ${snippet}...\n`;
+    }
+    preview += '\n';
+  }
+
+  if (!proposerWiki) {
+    preview += `**Warning:** Could not find wiki account for thread creator (${threadCreatorId}). The proposer column will show the Discord ID.\n\n`;
+  }
+
+  preview += '**Planned actions:**\n';
+  preview += `1. Rename thread to "[CLOSED] ${threadData.name}"\n`;
+  preview += `2. Lock thread\n`;
+  preview += `3. Create log page: \`${logPageTitle(day, subject)}\`\n`;
+  preview += `4. Update archive page\n`;
+  preview += `5. Update proposals page (Active → Ended)\n`;
+  if (voteResult === 'support' || voteResult === 'restructure') {
+    preview += `6. Create scaffold entry on to-do list\n`;
+    preview += `7. Create scaffold entry on progress page\n`;
+  }
+
+  // Store pending data
+  const confirmId = `close_confirm_${channelId}_${Date.now()}`;
+  const cancelId = `close_cancel_${channelId}_${Date.now()}`;
+
+  pendingCloses.set(confirmId, {
+    channelId,
+    threadData,
+    subject,
+    day,
+    proposer: proposerDisplay,
+    startDateStr,
+    endDateStr,
+    currentDateStr,
+    voteResult,
+    summary,
+    supportCount: finalSupport,
+    opposeCount: finalOppose,
+    restructureCount: finalRestructure,
+    archiveWikitext,
+    token,
+    cancelId,
+  });
+  pendingCloses.set(cancelId, { confirmId, type: 'cancel' });
+
+  // Auto-expire after 15 minutes
+  setTimeout(() => {
+    pendingCloses.delete(confirmId);
+    pendingCloses.delete(cancelId);
+  }, 15 * 60 * 1000);
+
+  // Send preview with buttons
+  await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content: preview,
+      flags: 64,
+      components: [{
+        type: 1, // ACTION_ROW
+        components: [
+          {
+            type: 2, // BUTTON
+            style: 3, // SUCCESS (green)
+            label: 'Confirm',
+            custom_id: confirmId,
+          },
+          {
+            type: 2,
+            style: 4, // DANGER (red)
+            label: 'Cancel',
+            custom_id: cancelId,
+          },
+        ],
+      }],
+    }),
+  });
 }
 
 /**
