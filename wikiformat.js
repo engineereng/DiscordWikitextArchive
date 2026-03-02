@@ -97,7 +97,12 @@ export function archiveEntry({ subject, day, summary, voteResult, supportCount, 
  */
 export function todoRow({ subject, day, summary }) {
   const anchor = archiveAnchor(day, subject);
-  return `| [[SiIvaGunner Wiki:Meme discussion/Archive#${anchor}|${summary}]] || ''To be filled in by a wiki editor'' || 0%`;
+  return [
+    `|[[SiIvaGunner_Wiki:Meme_discussion/Archive#${anchor}|${summary}]]`,
+    `|`,
+    `# ''To be filled in by a wiki editor''`,
+    `|0%`,
+  ].join('\n');
 }
 
 /**
@@ -111,5 +116,11 @@ export function todoRow({ subject, day, summary }) {
  */
 export function progressRow({ subject, day, summary, currentDate }) {
   const anchor = archiveAnchor(day, subject);
-  return `| [[SiIvaGunner Wiki:Meme discussion/Archive#${anchor}|${toOrdinal(day)}]] || ${summary} || '''Not done''' || ${currentDate} ||`;
+  return [
+    `| [[../Archive#${anchor}|${currentDate}]]`,
+    `| ${summary}`,
+    `| '''Not done'''`,
+    `| ${currentDate}`,
+    `|`,
+  ].join('\n');
 }

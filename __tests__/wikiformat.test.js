@@ -159,28 +159,32 @@ describe('archiveEntry', () => {
 });
 
 describe('todoRow', () => {
-  test('generates scaffold row', () => {
+  test('generates scaffold row with multiline cells', () => {
     const row = todoRow({
       subject: 'Teach Me How to Dougie',
       day: 14,
       summary: 'Create meme page for Teach Me How to Dougie',
     });
-    expect(row).toContain('Archive#14th: Teach Me How to Dougie');
-    expect(row).toContain("''To be filled in by a wiki editor''");
-    expect(row).toContain('0%');
+    expect(row).toContain('SiIvaGunner_Wiki:Meme_discussion/Archive#14th: Teach Me How to Dougie');
+    expect(row).toContain("# ''To be filled in by a wiki editor''");
+    expect(row).toContain('|0%');
+    const lines = row.split('\n');
+    expect(lines).toHaveLength(4);
   });
 });
 
 describe('progressRow', () => {
-  test('generates scaffold row', () => {
+  test('generates scaffold row with relative link and 5 columns', () => {
     const row = progressRow({
       subject: 'Teach Me How to Dougie',
       day: 14,
       summary: 'Create meme page for Teach Me How to Dougie',
       currentDate: 'April 21, 2025',
     });
-    expect(row).toContain('Archive#14th: Teach Me How to Dougie');
-    expect(row).toContain("'''Not done'''");
-    expect(row).toContain('April 21, 2025');
+    expect(row).toContain('[[../Archive#14th: Teach Me How to Dougie|April 21, 2025]]');
+    expect(row).toContain("| '''Not done'''");
+    expect(row).toContain('| April 21, 2025');
+    const lines = row.split('\n');
+    expect(lines).toHaveLength(5);
   });
 });

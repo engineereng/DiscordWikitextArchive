@@ -138,9 +138,12 @@ async function processClose({ options, channelId, token, webhookUrl }) {
   const day = startDate.getUTCDate();
   const now = new Date();
   const shortDate = (d) => `${d.getUTCMonth() + 1}/${d.getUTCDate()}/${d.getUTCFullYear()}`;
+  const longDate = (d) => d.toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+  });
   const startDateStr = shortDate(startDate);
   const endDateStr = shortDate(now);
-  const currentDateStr = endDateStr;
+  const currentDateLong = longDate(now);
 
   // Generate archive wikitext
   const nonBotMessages = messagesOldestFirst.filter(m => !m.author.bot);
@@ -210,7 +213,7 @@ async function processClose({ options, channelId, token, webhookUrl }) {
     proposer: proposerDisplay,
     startDateStr,
     endDateStr,
-    currentDateStr,
+    currentDateLong,
     voteResult,
     summary,
     supportCount: finalSupport,
@@ -264,7 +267,16 @@ export async function handleCloseButton(req, res) {
   const customId = req.body.data.custom_id;
   const pending = pendingCloses.get(customId);
 
-  if (!pending) return false;
+  if (!pending) {
+    return res.send({
+      type: 7, // UPDATE_MESSAGE
+      data: {
+        content: 'This close operation has already been processed or expired.',
+        components: [],
+        flags: 64,
+      },
+    });
+  }
 
   if (pending.type === 'cancel') {
     // Cancel
@@ -285,184 +297,216 @@ export async function handleCloseButton(req, res) {
   pendingCloses.delete(customId);
   pendingCloses.delete(data.cancelId);
 
-  // Acknowledge immediately with deferred update
-  await res.send({
-    type: 6, // DEFERRED_UPDATE_MESSAGE
+  // Immediately update the message to show processing state
+  res.send({
+    type: 7, // UPDATE_MESSAGE
+    data: {
+      content: '**Processing proposal close...**',
+      components: [],
+      flags: 64,
+    },
   });
 
-  const webhookUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+  // Do heavy work in a detached promise so Express returns immediately
+  const followupUrl = `https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}`;
 
-  try {
-    const results = [];
-
-    // 1. Rename thread
-    try {
-      const newName = `[CLOSED] ${data.threadData.name}`.slice(0, 100);
-      await DiscordRequest(`channels/${data.channelId}`, {
-        method: 'PATCH',
-        body: { name: newName },
-      });
-      results.push('Thread renamed');
-    } catch (e) {
-      results.push(`Thread rename failed: ${e.message}`);
-    }
-
-    // 2. Lock thread
-    try {
-      await DiscordRequest(`channels/${data.channelId}`, {
-        method: 'PATCH',
-        body: { locked: true },
-      });
-      results.push('Thread locked');
-    } catch (e) {
-      results.push(`Thread lock failed: ${e.message}`);
-    }
-
-    // 3. Wiki edits -- login first
-    try {
-      await wikiLogin();
-    } catch (e) {
-      results.push(`Wiki login failed: ${e.message}`);
-      await fetch(webhookUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: `**Proposal close partially failed.**\n\n${results.map(r => `• ${r}`).join('\n')}`,
-          components: [],
-        }),
-      });
-      return;
-    }
-
-    const wikiBase = process.env.WIKI_API_URL.replace('/w/api.php', '/wiki/');
-    const wikiLink = (title) => `${wikiBase}${encodeURIComponent(title).replace(/%2F/g, '/').replace(/%3A/g, ':')}`;
-
-    // 4. Create log page
-    try {
-      const logTitle = logPageTitle(data.day, data.subject);
-      await wikiEditPage(logTitle, data.archiveWikitext, `Creating log page for proposal: ${data.subject}`);
-      results.push(`[Log page created](${wikiLink(logTitle)})`);
-    } catch (e) {
-      results.push(`Log page creation failed: ${e.message}`);
-    }
-
-    // 5. Update archive page
-    try {
-      const entry = archiveEntry({
-        subject: data.subject,
-        day: data.day,
-        summary: data.summary,
-        voteResult: data.voteResult,
-        supportCount: data.supportCount,
-        opposeCount: data.opposeCount,
-        restructureCount: data.restructureCount,
-      });
-      const archiveTitle = 'SiIvaGunner Wiki:Meme discussion/Archive';
-      await wikiAppendToPage(
-        archiveTitle,
-        '\n\n' + entry,
-        `Adding archive entry for: ${data.subject}`,
-      );
-      const anchor = archiveAnchor(data.day, data.subject);
-      results.push(`[Archive page updated](${wikiLink(archiveTitle)}#${encodeURIComponent(anchor)})`);
-    } catch (e) {
-      results.push(`Archive update failed: ${e.message}`);
-    }
-
-    // 6. Update proposals page (Active → Ended)
-    try {
-      const row = proposalsPageRow({
-        subject: data.subject,
-        day: data.day,
-        proposer: data.proposer,
-        startDate: data.startDateStr,
-        endDate: data.endDateStr,
-        voteResult: data.voteResult,
-      });
-
-      const proposalsContent = await wikiReadPage('SiIvaGunner Wiki:Meme discussion');
-      if (proposalsContent) {
-        const marker = '<!--New row goes here-->';
-        const markerIndex = proposalsContent.indexOf(marker);
-
-        if (markerIndex !== -1) {
-          const newContent = proposalsContent.slice(0, markerIndex)
-            + `|-\n${row}\n${marker}`
-            + proposalsContent.slice(markerIndex + marker.length);
-
-          await wikiEditPage(
-            'SiIvaGunner Wiki:Meme discussion',
-            newContent,
-            `Closing proposal: ${data.subject} (${data.voteResult})`,
-          );
-          results.push(`[Proposals page updated](${wikiLink('SiIvaGunner Wiki:Meme discussion')})`);
-        } else {
-          await wikiAppendToPage(
-            'SiIvaGunner Wiki:Meme discussion',
-            `\n|-\n${row}`,
-            `Closing proposal: ${data.subject} (${data.voteResult})`,
-          );
-          results.push(`[Proposals page updated](${wikiLink('SiIvaGunner Wiki:Meme discussion')}) (marker not found, row appended)`);
-        }
-      }
-    } catch (e) {
-      results.push(`Proposals page update failed: ${e.message}`);
-    }
-
-    // 7. To-do and progress scaffolds (only for support/restructure)
-    if (data.voteResult === 'support' || data.voteResult === 'restructure') {
-      try {
-        const todo = todoRow({
-          subject: data.subject,
-          day: data.day,
-          summary: data.summary,
-        });
-        await wikiAppendToPage(
-          'SiIvaGunner Wiki:Meme discussion/Meme discussion to-do list',
-          `\n|-\n${todo}`,
-          `Adding to-do scaffold for: ${data.subject}`,
-        );
-        results.push(`[To-do list scaffold added](${wikiLink('SiIvaGunner Wiki:Meme discussion/Meme discussion to-do list')})`);
-      } catch (e) {
-        results.push(`To-do scaffold failed: ${e.message}`);
-      }
-
-      try {
-        const progress = progressRow({
-          subject: data.subject,
-          day: data.day,
-          summary: data.summary,
-          currentDate: data.currentDateStr,
-        });
-        await wikiAppendToPage(
-          'SiIvaGunner Wiki:Meme discussion/Progress',
-          `\n|-\n${progress}`,
-          `Adding progress scaffold for: ${data.subject}`,
-        );
-        results.push(`[Progress page scaffold added](${wikiLink('SiIvaGunner Wiki:Meme discussion/Progress')})`);
-      } catch (e) {
-        results.push(`Progress scaffold failed: ${e.message}`);
-      }
-    }
-
-    // Send final summary
-    await fetch(webhookUrl, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: `**Proposal closed successfully.**\n\n${results.map(r => `• ${r}`).join('\n')}`,
-        components: [],
-      }),
-    });
-  } catch (error) {
+  executeClose(data, followupUrl).catch(error => {
     console.error('Error executing close:', error);
-    await fetch(webhookUrl, {
-      method: 'PATCH',
+    fetch(followupUrl, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content: `Error executing close: ${error.message}`,
-        components: [],
+        flags: 64,
+      }),
+    }).catch(e => console.error('Failed to send error follow-up:', e));
+  });
+}
+
+/**
+ * Execute all close actions (Discord + Wiki) and send a follow-up with results.
+ */
+async function executeClose(data, followupUrl) {
+  const results = [];
+
+  // 1. Rename thread
+  try {
+    const newName = `[CLOSED] ${data.threadData.name}`.slice(0, 100);
+    await DiscordRequest(`channels/${data.channelId}`, {
+      method: 'PATCH',
+      body: { name: newName },
+    });
+    results.push('Thread renamed');
+  } catch (e) {
+    results.push(`Thread rename failed: ${e.message}`);
+  }
+
+  // 2. Lock thread
+  try {
+    await DiscordRequest(`channels/${data.channelId}`, {
+      method: 'PATCH',
+      body: { locked: true },
+    });
+    results.push('Thread locked');
+  } catch (e) {
+    results.push(`Thread lock failed: ${e.message}`);
+  }
+
+  // 3. Wiki edits -- login first
+  try {
+    await wikiLogin();
+  } catch (e) {
+    results.push(`Wiki login failed: ${e.message}`);
+    await fetch(followupUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: `**Proposal close partially failed.**\n\n${results.map(r => `• ${r}`).join('\n')}`,
+        flags: 64,
       }),
     });
+    return;
+  }
+
+  const wikiBase = process.env.WIKI_API_URL.replace('/w/api.php', '/wiki/');
+  const wikiLink = (title) => `${wikiBase}${encodeURIComponent(title).replace(/%2F/g, '/').replace(/%3A/g, ':')}`;
+
+  // 4. Create log page
+  try {
+    const logTitle = logPageTitle(data.day, data.subject);
+    await wikiEditPage(logTitle, data.archiveWikitext, `Creating log page for proposal: ${data.subject}`);
+    results.push(`[Log page created](${wikiLink(logTitle)})`);
+  } catch (e) {
+    results.push(`Log page creation failed: ${e.message}`);
+  }
+
+  // 5. Update archive page
+  try {
+    const entry = archiveEntry({
+      subject: data.subject,
+      day: data.day,
+      summary: data.summary,
+      voteResult: data.voteResult,
+      supportCount: data.supportCount,
+      opposeCount: data.opposeCount,
+      restructureCount: data.restructureCount,
+    });
+    const archiveTitle = 'SiIvaGunner Wiki:Meme discussion/Archive';
+    await wikiAppendToPage(
+      archiveTitle,
+      '\n\n' + entry,
+      `Adding archive entry for: ${data.subject}`,
+    );
+    const anchor = archiveAnchor(data.day, data.subject);
+    results.push(`[Archive page updated](${wikiLink(archiveTitle)}#${encodeURIComponent(anchor)})`);
+  } catch (e) {
+    results.push(`Archive update failed: ${e.message}`);
+  }
+
+  // 6. Update proposals page (Active → Ended)
+  try {
+    const row = proposalsPageRow({
+      subject: data.subject,
+      day: data.day,
+      proposer: data.proposer,
+      startDate: data.startDateStr,
+      endDate: data.endDateStr,
+      voteResult: data.voteResult,
+    });
+
+    const proposalsContent = await wikiReadPage('SiIvaGunner Wiki:Meme discussion');
+    if (proposalsContent) {
+      const marker = '<!--New row goes here-->';
+      const markerIndex = proposalsContent.indexOf(marker);
+
+      if (markerIndex !== -1) {
+        const newContent = proposalsContent.slice(0, markerIndex)
+          + `|-\n${row}\n${marker}`
+          + proposalsContent.slice(markerIndex + marker.length);
+
+        await wikiEditPage(
+          'SiIvaGunner Wiki:Meme discussion',
+          newContent,
+          `Closing proposal: ${data.subject} (${data.voteResult})`,
+        );
+        results.push(`[Proposals page updated](${wikiLink('SiIvaGunner Wiki:Meme discussion')})`);
+      } else {
+        await wikiAppendToPage(
+          'SiIvaGunner Wiki:Meme discussion',
+          `\n|-\n${row}`,
+          `Closing proposal: ${data.subject} (${data.voteResult})`,
+        );
+        results.push(`[Proposals page updated](${wikiLink('SiIvaGunner Wiki:Meme discussion')}) (marker not found, row appended)`);
+      }
+    }
+  } catch (e) {
+    results.push(`Proposals page update failed: ${e.message}`);
+  }
+
+  // 7. To-do and progress scaffolds (only for support/restructure)
+  if (data.voteResult === 'support' || data.voteResult === 'restructure') {
+    try {
+      const todo = todoRow({
+        subject: data.subject,
+        day: data.day,
+        summary: data.summary,
+      });
+      const todoTitle = 'SiIvaGunner Wiki:Meme discussion/Meme discussion to-do list';
+      const todoContent = await wikiReadPage(todoTitle);
+      const todoMarker = '<!-- Scaffolding';
+
+      if (todoContent && todoContent.includes(todoMarker)) {
+        const idx = todoContent.indexOf(todoMarker);
+        const newContent = todoContent.slice(0, idx)
+          + `|-\n${todo}\n${todoMarker}`
+          + todoContent.slice(idx + todoMarker.length);
+        await wikiEditPage(todoTitle, newContent, `Adding to-do scaffold for: ${data.subject}`);
+        results.push(`[To-do list scaffold added](${wikiLink(todoTitle)})`);
+      } else {
+        await wikiAppendToPage(todoTitle, `\n|-\n${todo}`, `Adding to-do scaffold for: ${data.subject}`);
+        results.push(`[To-do list scaffold added](${wikiLink(todoTitle)}) (marker not found, row appended)`);
+      }
+    } catch (e) {
+      results.push(`To-do scaffold failed: ${e.message}`);
+    }
+
+    try {
+      const progress = progressRow({
+        subject: data.subject,
+        day: data.day,
+        summary: data.summary,
+        currentDate: data.currentDateLong,
+      });
+      const progressTitle = 'SiIvaGunner Wiki:Meme discussion/Progress';
+      const progressContent = await wikiReadPage(progressTitle);
+      const progressMarker = '<!-- ...New entries...';
+
+      if (progressContent && progressContent.includes(progressMarker)) {
+        const idx = progressContent.indexOf(progressMarker);
+        const newContent = progressContent.slice(0, idx)
+          + `|-\n${progress}\n${progressMarker}`
+          + progressContent.slice(idx + progressMarker.length);
+        await wikiEditPage(progressTitle, newContent, `Adding progress scaffold for: ${data.subject}`);
+        results.push(`[Progress page scaffold added](${wikiLink(progressTitle)})`);
+      } else {
+        await wikiAppendToPage(progressTitle, `\n|-\n${progress}`, `Adding progress scaffold for: ${data.subject}`);
+        results.push(`[Progress page scaffold added](${wikiLink(progressTitle)}) (marker not found, row appended)`);
+      }
+    } catch (e) {
+      results.push(`Progress scaffold failed: ${e.message}`);
+    }
+  }
+
+  // Send results as a follow-up message
+  const resp = await fetch(followupUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content: `**Proposal closed successfully.**\n\n${results.map(r => `• ${r}`).join('\n')}`,
+      flags: 64,
+    }),
+  });
+  if (!resp.ok) {
+    console.error('Failed to send close results:', resp.status, await resp.text());
   }
 }
