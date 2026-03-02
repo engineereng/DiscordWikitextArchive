@@ -16,6 +16,22 @@ import {
 } from './wikiformat.js';
 import { wikiLogin, wikiReadPage, wikiEditPage, wikiAppendToPage } from './wiki.js';
 
+const TAG_NAME_MAP = {
+  support: 'approved',
+  oppose: 'rejected',
+  restructure: 'restructured',
+  null: 'not enough votes',
+  closed: 'closed',
+};
+
+const PREFIX_MAP = {
+  support: '[CLOSED]',
+  oppose: '[CLOSED]',
+  restructure: '[CLOSED]',
+  null: '[NULL]',
+  closed: '[CLOSED]',
+};
+
 // In-memory store for pending close confirmations (keyed by interaction custom_id)
 const pendingCloses = new Map();
 
@@ -190,15 +206,19 @@ async function processClose({ options, channelId, token, webhookUrl }) {
     preview += `**Warning:** Could not find wiki account for thread creator (${threadCreatorId}). The proposer column will show the Discord ID.\n\n`;
   }
 
+  const prefix = PREFIX_MAP[voteResult] || '[CLOSED]';
+  const tagName = TAG_NAME_MAP[voteResult] || voteResult;
+
   preview += '**Planned actions:**\n';
-  preview += `1. Rename thread to "[CLOSED] ${threadData.name}"\n`;
-  preview += `2. Lock thread\n`;
-  preview += `3. Create log page: \`${logPageTitle(day, subject)}\`\n`;
-  preview += `4. Update archive page\n`;
-  preview += `5. Update proposals page (Active → Ended)\n`;
+  preview += `1. Rename thread to "${prefix} ${threadData.name}"\n`;
+  preview += `2. Apply tag: **${tagName}**\n`;
+  preview += `3. Archive and lock thread\n`;
+  preview += `4. Create log page: \`${logPageTitle(day, subject)}\`\n`;
+  preview += `5. Update archive page\n`;
+  preview += `6. Update proposals page (Active → Ended)\n`;
   if (voteResult === 'support' || voteResult === 'restructure') {
-    preview += `6. Create scaffold entry on to-do list\n`;
-    preview += `7. Create scaffold entry on progress page\n`;
+    preview += `7. Create scaffold entry on to-do list\n`;
+    preview += `8. Create scaffold entry on progress page\n`;
   }
 
   // Store pending data
@@ -322,28 +342,6 @@ export async function handleCloseButton(req, res) {
     }).catch(e => console.error('Failed to send error follow-up:', e));
   });
 }
-
-/**
- * Map vote result to the expected forum tag name.
- */
-const TAG_NAME_MAP = {
-  support: 'approved',
-  oppose: 'rejected',
-  restructure: 'restructured',
-  null: 'not enough votes',
-  closed: 'closed',
-};
-
-/**
- * Map vote result to thread name prefix.
- */
-const PREFIX_MAP = {
-  support: '[CLOSED]',
-  oppose: '[CLOSED]',
-  restructure: '[CLOSED]',
-  null: '[NULL]',
-  closed: '[CLOSED]',
-};
 
 /**
  * Execute all close actions (Discord + Wiki) and send a follow-up with results.
