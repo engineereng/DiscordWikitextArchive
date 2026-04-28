@@ -53,9 +53,9 @@ This project was born out of a need to streamline the logging process for a popu
 | `/archive this` | Archive the current thread |
 | `/archive thread <id>` | Archive a specific thread by ID |
 | `/close` | Close a meme proposal (vote count, archive, wiki edits) |
-| `/allowed_channels` | Manage which channels can be archived |
-| `/allowed_roles` | Manage which roles can use bot commands |
-| `/verified_members` | Manage Discord-to-wiki account mappings |
+| `/verified_members` | Manage Discord-to-wiki account mappings and verification roles |
+
+Use **[Discord Server Integrations](https://support.discord.com/hc/en-us/articles/360045093012-Server-Integrations-Page)** (**Server Settings → Integrations → your bot → Manage**) to choose which roles and users may run each slash command (including `/verified_members` subcommands such as **add** and **remove**). Allowed archive channels and allowed roles for `/archive` and `/close` are stored in the bot’s SQLite database (`bot.db`); see [docs/commands-and-setup.md](docs/commands-and-setup.md).
 
 ### `/close` Options
 

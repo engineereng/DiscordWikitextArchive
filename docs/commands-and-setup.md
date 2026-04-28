@@ -5,36 +5,34 @@ The Discord Archive Bot is designed to archive specific discussion threads from 
 
 ### Commands
 
+#### Slash command permissions (Server Integrations)
+
+Who may use each slash command—including individual subcommands such as `/verified_members add` and `/verified_members remove`—is configured in Discord, not in this repo’s command definitions. Server admins should use **[Server Settings → Integrations → your bot → Manage](https://support.discord.com/hc/en-us/articles/360045093012-Server-Integrations-Page)** to allow or deny commands per role and per user. For example, grant **add** and **remove** only to moderator roles so verification stays restricted.
+
 #### Archive Commands
-These commands are used to archive Discord discussions. They can only be used in specific channels and require one of the "allowed list" roles.
+
+These commands archive Discord discussions. The bot still enforces **which channels** may be archived and **which roles** may run `/archive` and `/close` using lists stored in its database (see [Allowed channels and roles](#allowed-channels-and-roles-bot-database) below).
 
 - `/archive this` - Archives the current thread
 - `/archive thread <thread>` - Archives a specific thread (Note: Discord won't show closed threads in the picklist)
 
 #### Verification Commands
+
 These commands manage member verification and wiki account associations.
 
 - `/verified_members list` - Lists all verified members
 - `/verified_members add <user> <wiki_account>` - Adds a Discord user to the verified members list and associates their wiki account
 - `/verified_members remove <user>` - Removes a Discord user from the verified members list
-
-#### Configuration Commands
-These commands can only be run by administrators.
-
-##### Channel Permissions
-- `/allowed_channels list` - Lists all channels that can have their threads archived
-- `/allowed_channels add <channel>` - Adds a channel to the allowed list
-- `/allowed_channels remove <channel>` - Removes a channel from the allowed list
-
-##### Role Permissions
-- `/allowed_roles list` - Lists all roles that can archive channels
-- `/allowed_roles add <role>` - Adds a role to the allowed list
-- `/allowed_roles remove <role>` - Removes a role from the allowed list
-
-##### Verification Roles
 - `/verified_members role list` - Lists all roles that can be given to verified members
 - `/verified_members role add <role>` - Adds a role to be given to verified members
 - `/verified_members role remove <role>` - Removes a role from being given to verified members
+
+#### Allowed channels and roles (bot database)
+
+Archiving is limited to threads whose **parent channel** is in the allowed channel list. `/archive` and `/close` require the member to have one of the **allowed roles**. Those lists live in SQLite (`bot.db`, tables `allowed_channels` and `allowed_roles`). They are **not** changed via slash commands.
+
+- **Empty database on first run**: If the corresponding tables are empty and JSON files are present, the bot migrates `allowed_channels.json` and `allowed_roles.json` into the database (see `archive.js`). Prepare those JSON files before the first start if you rely on migration.
+- **After migration or on an existing server**: Update rows in `bot.db` with the SQLite CLI or another SQLite client (insert/delete channel IDs and role IDs as needed). You can also stop the bot, remove `bot.db`, and restart with JSON files present if you need a clean re-import (only if acceptable for your deployment).
 
 ### Setup Process
 
@@ -60,10 +58,9 @@ These commands can only be run by administrators.
 
 4. **Initial Setup**
    - Run the bot using `npm run start`
-   - Use the following commands to set up the initial configuration:
-     - `/allowed_channels add <channel>` - Add channels where archiving is allowed
-     - `/allowed_roles add <role>` - Add roles that can archive
-     - `/verified_members role add <role>` - Add roles to be given to verified members
+   - Configure **allowed channels** and **allowed roles** using `allowed_channels.json` / `allowed_roles.json` (first import) or by editing `bot.db` as described [above](#allowed-channels-and-roles-bot-database).
+   - In Discord **Integrations**, restrict slash commands (especially `/verified_members` **add**/**remove**) to the roles that should use them.
+   - Use `/verified_members role add <role>` (and related verification commands) once your roles can invoke them.
 
 5. **Known Issues**
    - If the bot says "The application didn't respond in time," the host might be experiencing issues
@@ -72,8 +69,8 @@ These commands can only be run by administrators.
    - Names in logs might not match wiki usernames if members aren't verified
 
 6. **Security Notes**
-   - Keep `verified_members.json` secure and never commit it to version control
-   - Only administrators should have access to configuration commands
+   - Keep `verified_members.json` and `bot.db` secure and never commit them to version control
+   - Use Discord **Integrations** so only trusted roles can run sensitive slash commands (for example `/verified_members` **add**/**remove**)
    - Verify members carefully to maintain wiki integrity
 
 ### Deployment
@@ -227,8 +224,10 @@ Set up [log rotation](https://en.wikipedia.org/wiki/Log_rotation) so log files a
 
 1. **Regular Backups**
    - Back up the following files regularly:
+     - `bot.db` (allowed channels/roles, verified members, etc.)
      - `verified_members.json`
      - `verified_members_roles.json`
+     - `allowed_channels.json` / `allowed_roles.json` (if you maintain them for migration)
      - `.env` file
      - Any custom configurations
    - Store backups in a secure location
