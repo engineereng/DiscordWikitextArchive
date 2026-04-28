@@ -226,18 +226,32 @@ export function setAllowedRoles(roles) {
  * @returns An array of objects containing member IDs and wiki accounts
  */
 export function getVerifiedMembers() {
-    return db.prepare('SELECT member_id AS memberId, wiki_account AS wikiAccount, display_name AS displayName FROM verified_members').all();
+    return db.prepare(
+        `SELECT member_id AS memberId, wiki_account AS wikiAccount, display_name AS displayName
+         FROM verified_members
+         ORDER BY COALESCE(display_name, '') COLLATE NOCASE, member_id`
+    ).all();
 }
 
 /**
  * Set the members that are verified
  * @param {Array} members An array of objects containing member IDs and wiki accounts
  */
+function sortVerifiedMembersForStorage(members) {
+    return [...members].sort((a, b) => {
+        const an = (a.displayName || '').toLowerCase();
+        const bn = (b.displayName || '').toLowerCase();
+        if (an !== bn) return an.localeCompare(bn);
+        return (a.memberId || '').localeCompare(b.memberId || '');
+    });
+}
+
 export function setVerifiedMembers(members) {
+    const ordered = sortVerifiedMembersForStorage(members);
     db.transaction(() => {
         db.prepare('DELETE FROM verified_members').run();
         const insert = db.prepare('INSERT INTO verified_members (member_id, wiki_account, display_name) VALUES (?, ?, ?)');
-        for (const m of members) insert.run(m.memberId, m.wikiAccount, m.displayName || null);
+        for (const m of ordered) insert.run(m.memberId, m.wikiAccount, m.displayName || null);
     })();
 }
 

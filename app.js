@@ -480,9 +480,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             message = "No members have a wiki account.";
           } else {
             console.log('Formatting members list...');
-            const membersList = members.map(member =>
-              `${member.displayName} (${member.memberId}) - Wiki Account: ${member.wikiAccount}`
-            ).join('\n');
+            const membersList = [
+              'Key: Discord username - Wiki account',
+              ...members.map(member => `${member.displayName} - ${member.wikiAccount}`),
+            ].join('\n');
 
             // Create a buffer from the content
             const buffer = Buffer.from(membersList, 'utf8');
