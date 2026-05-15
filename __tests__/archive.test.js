@@ -376,4 +376,50 @@ describe('Message Formatting', () => {
       );
     });
   });
+
+  describe('Message anchors (issue #24)', () => {
+    test('normal row with Discord message id gets id= fragment param', () => {
+      const message = {
+        id: '1111111111111111111',
+        content: 'Hello',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z'
+      };
+      expect(formatMessageToWikitext(message, authors)).toBe(
+        '{{DiscordLog2|id=message_1111111111111111111|t= 21:36|1=Ironwestie|2=Hello}}'
+      );
+    });
+
+    test('ping-reply preview row uses replyto= not id=', () => {
+      const message = {
+        id: '2222222222222222222',
+        content: 'Quoted parent',
+        author: { id: '456' },
+        timestamp: '2025-03-21T21:35:27.000Z'
+      };
+      expect(formatMessageToWikitext(message, authors, true)).toBe(
+        '{{DiscordLog2|replyto=message_2222222222222222222|class=ping reply|1=TestUser|2=Quoted parent}}'
+      );
+    });
+
+    test('reply context links preview to parent id and anchors the reply', () => {
+      const message = {
+        id: '3333333333333333333',
+        type: 19,
+        content: 'Reply body',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z',
+        referenced_message: {
+          id: '4444444444444444444',
+          content: 'Parent',
+          author: { id: '456' },
+          timestamp: '2025-03-21T21:35:27.000Z'
+        }
+      };
+      expect(formatMessageWithContext(message, authors)).toBe(
+        '{{DiscordLog2|replyto=message_4444444444444444444|class=ping reply|1=TestUser|2=Parent}}\n' +
+        '{{DiscordLog2|id=message_3333333333333333333|t= 21:36|1=Ironwestie|2=Reply body}}'
+      );
+    });
+  });
 });
