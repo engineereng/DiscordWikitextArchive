@@ -65,20 +65,31 @@ db.exec(`
 })();
 
 /**
-   * Format a message to wikitext
-   * @param {*} message The message to format. Format:
-   * @param {Array} authors The array of verified members
-   * @param {boolean} reply Whether the message is a reply
-   * @param {boolean} forwarded Whether the message is a forwarded message
-   * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
-   * @returns A string of the message formatted as wikitext
-   */
+ * Format a message to wikitext
+ * @param {*} message The message to format (Discord API shape). When `message.id` is set, adds
+ *   `id=message_<id>` on normal rows or `replyto=message_<id>` on ping-reply preview rows for wiki anchors.
+ * @param {Array} authors The array of verified members
+ * @param {boolean} reply Whether the message is a reply
+ * @param {boolean} forwarded Whether the message is a forwarded message
+ * @param {boolean} simpleDate Whether to use the simple date format (21:56) or the full date format (Fri, 21 Mar 2025 21:56)
+ * @returns A string of the message formatted as wikitext
+ */
 export function formatMessageToWikitext (message, authors, reply = false, forwarded = false, simpleDate = true) {
     // Format:
     // {{DiscordLog|t=timestamp|authorLink|content}}
+    // id=/replyto= are consumed by Template:DiscordLog2 for anchors and reply links (#message_<snowflake>).
     const templatePrefix = `{{DiscordLog2`
     const parts = [];
     parts.push(templatePrefix);
+
+    if (message.id) {
+      const anchor = `message_${message.id}`;
+      if (reply) {
+        parts.push(`replyto=${anchor}`);
+      } else {
+        parts.push(`id=${anchor}`);
+      }
+    }
 
     const timestamp = new Date(message.timestamp).toUTCString();
     const timestampFormatted = simpleDate ? timestamp.slice(16, 22) : timestamp;
