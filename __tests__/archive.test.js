@@ -227,6 +227,46 @@ describe('Message Formatting', () => {
       );
     });
 
+    test('Reply to bot message omits referenced bot preview', () => {
+      const message = {
+        type: 19,
+        content: 'Human reply after bot',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z',
+        referenced_message: {
+          content: 'Bot stock reply that must not appear in archive',
+          author: { id: '999', username: 'ArchiveBot', bot: true },
+          timestamp: '2025-03-21T21:35:27.000Z'
+        }
+      };
+      expect(formatMessageWithContext(message, authors)).toBe(
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=Human reply after bot}}'
+      );
+    });
+
+    test('Reply to forwarded message when referenced author is a bot omits preview', () => {
+      const message = {
+        type: 19,
+        content: 'Reply after bot forwarded wrapper',
+        author: { id: '123' },
+        timestamp: '2025-03-21T21:36:27.000Z',
+        referenced_message: {
+          content: 'Forwarded content',
+          author: { id: '999', username: 'SomeBot', bot: true },
+          timestamp: '2025-03-21T21:35:27.000Z',
+          message_snapshots: [{
+            message: {
+              content: 'Original forwarded content',
+              timestamp: '2025-03-21T21:35:27.000Z'
+            }
+          }]
+        }
+      };
+      expect(formatMessageWithContext(message, authors)).toBe(
+        '{{DiscordLog2|t= 21:36|1=Ironwestie|2=Reply after bot forwarded wrapper}}'
+      );
+    });
+
     test('Reply to forwarded message', () => {
       const message = {
         type: 19,

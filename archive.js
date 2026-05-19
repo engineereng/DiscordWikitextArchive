@@ -333,6 +333,14 @@ export async function getMemberInfo(guildId, memberId) {
 }
 
 /**
+ * @param {Object} message Discord API message object
+ * @returns {boolean} True when message.author.bot is strictly true
+ */
+export function isBotAuthoredMessage(message) {
+  return message?.author?.bot === true;
+}
+
+/**
  * Format an array of messages with their context (replies and forwards)
  * @param {Array} messages The array of messages to format
  * @param {Array} authors Array of verified members
@@ -377,6 +385,9 @@ export function formatMessageWithContext(message, authors) {
     // Handle reply message
     const referencedMessage = message.referenced_message;
     if (referencedMessage) {
+      if (isBotAuthoredMessage(referencedMessage)) {
+        return formatMessageToWikitext(message, authors);
+      }
       if (referencedMessage.message_snapshots && referencedMessage.message_snapshots.length > 0) {
         // Handle a reply to a forwarded message
         const messageSnapshot = referencedMessage.message_snapshots[0].message;
