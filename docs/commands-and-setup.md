@@ -219,6 +219,13 @@ Set up [log rotation](https://en.wikipedia.org/wiki/Log_rotation) so log files a
    - SSL/TLS errors - Verify certificate validity and Cloudflare settings
    - Permission errors - Verify bot has correct Discord permissions
    - Database errors - Check file permissions and disk space
+   - `better-sqlite3` / `ERR_DLOPEN_FAILED` / "compiled against a different Node.js version" (e.g. `NODE_MODULE_VERSION 115` vs `127`): the native addon was built for a different Node than the one running the bot (common if `npm install` or `npm rebuild` used another `node` on `PATH`, while PM2 uses `/usr/bin/node`). Fix on the Pi: rebuild with the same Node PM2 uses, then restart:
+     ```bash
+     cd /path/to/DiscordWikitextArchive
+     PATH=/usr/bin:/bin npm_config_build_from_source=true npm rebuild better-sqlite3
+     pm2 restart discord-bot
+     ```
+     Use `node -v` under that same `PATH` and compare to `pm2 describe discord-bot` (Node.js version). On slow devices, `--build-from-source` can take several minutes.
 
 ### Backup and Recovery
 

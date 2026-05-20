@@ -17,7 +17,8 @@ import {
   getVerifiedRoles,
   setVerifiedRoles,
   addRoleToMember,
-  getMemberInfo
+  getMemberInfo,
+  isBotAuthoredMessage
 } from './archive.js';
 import { handleCloseCommand, handleCloseButton } from './close.js';
 
@@ -177,7 +178,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         const authors = await getVerifiedMembers();
         // Filter out bot messages and reverse the order
         const messagesReversed = messages
-          .filter(message => !message.author.bot) // Remove bot messages
+          .filter(message => !isBotAuthoredMessage(message))
           .reverse();
         const fileContent = `<templatestyles src="Template:DiscordLog/styles.css"/>\n` +
           formatMessagesWithContext(messagesReversed, authors);
@@ -204,6 +205,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
         // If there are unverified users, send a message to the channel
         const unverifiedUsers = messages.filter((message, index, self) =>
+          !isBotAuthoredMessage(message) &&
           !authors.find(author => author.memberId === message.author.id) &&
           index === self.findIndex(m => m.author.id === message.author.id)
         );
