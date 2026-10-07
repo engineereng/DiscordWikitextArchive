@@ -20,7 +20,7 @@
     "better-sqlite3": "^12.6.2",
     "discord-interactions": "^4.0.0",
     "dotenv": "^16.0.3",
-    "express": "^4.22.2",
+    "express": "^5.2.1",
     "glob": "^9.3.5",
     "markdown-it": "^14.3.1"
   },
